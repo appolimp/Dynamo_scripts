@@ -1,0 +1,417 @@
+{
+  "Uuid": "55a2ecaa-b10c-4ccc-9409-fa684dbe34d1",
+  "IsCustomNode": false,
+  "Description": null,
+  "Name": "First",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [
+    {
+      "Id": "90eddb2da99344f7841a14068b339e4c",
+      "Name": "1. Имя фильтра",
+      "Type": "string",
+      "Value": "Interior",
+      "Description": "Создание строки."
+    },
+    {
+      "Id": "e2742a1432734a0c9e1ee39f2b1bd9c3",
+      "Name": "2. Цвет(HEX)",
+      "Type": "string",
+      "Value": "#ff0000",
+      "Description": "Создание строки."
+    },
+    {
+      "Id": "6b4c647d0f474c91aaa2849c99ad3fe8",
+      "Name": "3. Видимый",
+      "Type": "boolean",
+      "Value": "true",
+      "Description": "Выбор между значениями true и false."
+    },
+    {
+      "Id": "b1acd16cce2745cc8f1710165e45bb03",
+      "Name": "4. Полутон",
+      "Type": "boolean",
+      "Value": "true",
+      "Description": "Выбор между значениями true и false."
+    }
+  ],
+  "Outputs": [
+    {
+      "Id": "33456303c34b47f2893ffda8e639feee",
+      "Name": "Log",
+      "Type": "string",
+      "InitialValue": "[2020.09.17 13:27:20] E Ничего не выбрано\r\n",
+      "Description": "Визуализация входного элемента узла."
+    }
+  ],
+  "Nodes": [
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.ZeroTouch.DSFunction, DynamoCore",
+      "NodeType": "FunctionNode",
+      "FunctionSignature": "PyScript.Script.Execute@var[]",
+      "Id": "38e041d4b5834bb9b450d5b75c200871",
+      "Inputs": [
+        {
+          "Id": "463fffa3caa04a988f9707579ea91ac6",
+          "Name": "IN",
+          "Description": "A list of inputs.\n\nvar[]\nЗначение по умолчанию : DesignScript.Builtin.Dictionary.ByKeysValues([], [])",
+          "UsingDefaultValue": true,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "d773487d9bb24a0db926af7e3b886929",
+          "Name": "output",
+          "Description": "The script output.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "e9ec3b6168ea4c59824ac09a0a41235c",
+          "Name": "OUT",
+          "Description": "var",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Auto",
+      "Description": "Running a python script with the same name as the workspace.\n\nScript.Execute (IN: var[] = DesignScript.Builtin.Dictionary.ByKeysValues([], [])): var[]..[]"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "NodeType": "ExtensionNode",
+      "Id": "33456303c34b47f2893ffda8e639feee",
+      "Inputs": [
+        {
+          "Id": "b017ea7d86b64f498383a395db73761c",
+          "Name": "",
+          "Description": "Узел для оценки.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "8abf8d23d61744c99b6a639b40ee3774",
+          "Name": "",
+          "Description": "Просмотр содержимого.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Визуализация входного элемента узла."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.CreateList, CoreNodeModels",
+      "VariableInputPorts": true,
+      "NodeType": "ExtensionNode",
+      "Id": "dc8bacb26c754c148289dece1d9d49c3",
+      "Inputs": [
+        {
+          "Id": "faef58f89e9547b5b88cc4a72a674936",
+          "Name": "item0",
+          "Description": "Индекс элемента #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "646e7968a26646f0b6d50e4386ea31c3",
+          "Name": "item1",
+          "Description": "Индекс элемента #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "1b780361615743e887e8b9be53026bab",
+          "Name": "item2",
+          "Description": "Индекс элемента #2",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "8de1bb15223f4627af9b4132db9a9007",
+          "Name": "item3",
+          "Description": "Индекс элемента #3",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "8a4d4ae16aa046c2a71020ad80ac2c1d",
+          "Name": "list",
+          "Description": "Список",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание нового списка из заданных входных значений"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "Interior",
+      "Id": "90eddb2da99344f7841a14068b339e4c",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "e0c70e783a3747989f243f5c4902bd1f",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание строки."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "#ff0000",
+      "Id": "e2742a1432734a0c9e1ee39f2b1bd9c3",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "39ef223b626343be8adfbaefde40a4d9",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание строки."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "NodeType": "BooleanInputNode",
+      "InputValue": true,
+      "Id": "6b4c647d0f474c91aaa2849c99ad3fe8",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "1d338f1d25c342b48189dcaebb666693",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выбор между значениями true и false."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "NodeType": "BooleanInputNode",
+      "InputValue": true,
+      "Id": "b1acd16cce2745cc8f1710165e45bb03",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "cb6775158ff145e0a9e49546467e8dc1",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выбор между значениями true и false."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "d773487d9bb24a0db926af7e3b886929",
+      "End": "b017ea7d86b64f498383a395db73761c",
+      "Id": "1b730b7b16d841d38a4a3abd72de6422"
+    },
+    {
+      "Start": "8a4d4ae16aa046c2a71020ad80ac2c1d",
+      "End": "463fffa3caa04a988f9707579ea91ac6",
+      "Id": "18f63b7d7e864d6d8a12403173b50fc1"
+    },
+    {
+      "Start": "e0c70e783a3747989f243f5c4902bd1f",
+      "End": "faef58f89e9547b5b88cc4a72a674936",
+      "Id": "aca21cfea72e46aeb10e03b14b661014"
+    },
+    {
+      "Start": "39ef223b626343be8adfbaefde40a4d9",
+      "End": "646e7968a26646f0b6d50e4386ea31c3",
+      "Id": "56f881d066c14b198384e3d501be0b40"
+    },
+    {
+      "Start": "1d338f1d25c342b48189dcaebb666693",
+      "End": "1b780361615743e887e8b9be53026bab",
+      "Id": "278edda5fa4e4f4db420be06aea5371b"
+    },
+    {
+      "Start": "cb6775158ff145e0a9e49546467e8dc1",
+      "End": "8de1bb15223f4627af9b4132db9a9007",
+      "Id": "0b06e5e18add4c4e965668bdf47da34f"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [
+    {
+      "Name": "PyScript",
+      "Version": "0.0.7",
+      "ReferenceType": "Package",
+      "Nodes": [
+        "38e041d4b5834bb9b450d5b75c200871"
+      ]
+    }
+  ],
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.6.1.8786",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Фоновый просмотр",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "NodeViews": [
+      {
+        "ShowGeometry": true,
+        "Name": "Script.Execute",
+        "Id": "38e041d4b5834bb9b450d5b75c200871",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 503.75,
+        "Y": 373.0
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Log",
+        "Id": "33456303c34b47f2893ffda8e639feee",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": true,
+        "Excluded": false,
+        "X": 776.75,
+        "Y": 373.0
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "List Create",
+        "Id": "dc8bacb26c754c148289dece1d9d49c3",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 283.75,
+        "Y": 372.23526432142052
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "1. Имя фильтра",
+        "Id": "90eddb2da99344f7841a14068b339e4c",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 23.75,
+        "Y": 287.0
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "2. Цвет(HEX)",
+        "Id": "e2742a1432734a0c9e1ee39f2b1bd9c3",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 23.75,
+        "Y": 370.0
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "3. Видимый",
+        "Id": "6b4c647d0f474c91aaa2849c99ad3fe8",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 23.75,
+        "Y": 454.0
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "4. Полутон",
+        "Id": "b1acd16cce2745cc8f1710165e45bb03",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 23.75,
+        "Y": 537.0
+      }
+    ],
+    "Annotations": [
+      {
+        "Id": "7a6eeaa4293c45c185ec43c206e0af36",
+        "Title": "Input",
+        "Nodes": [
+          "90eddb2da99344f7841a14068b339e4c",
+          "e2742a1432734a0c9e1ee39f2b1bd9c3",
+          "6b4c647d0f474c91aaa2849c99ad3fe8",
+          "b1acd16cce2745cc8f1710165e45bb03"
+        ],
+        "Left": 13.75,
+        "Top": 234.0,
+        "Width": 180.0,
+        "Height": 371.0,
+        "FontSize": 36.0,
+        "InitialTop": 287.0,
+        "InitialHeight": 395.0,
+        "TextblockHeight": 43.0,
+        "Background": "#FFA4E1FF"
+      }
+    ],
+    "X": 93.943995868271486,
+    "Y": -164.26847985865845,
+    "Zoom": 1.3076413563671876
+  }
+}

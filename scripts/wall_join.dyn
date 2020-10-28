@@ -1,0 +1,233 @@
+{
+  "Uuid": "b023145d-32ec-43bc-84cb-6dfedcb9a60d",
+  "IsCustomNode": false,
+  "Description": null,
+  "Name": "wall_join",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [
+    {
+      "Id": "9a75ccf993a9462c89e81635a9368589",
+      "Name": "Join start?",
+      "Type": "boolean",
+      "Value": "false",
+      "Description": "Выбор между значениями true и false."
+    },
+    {
+      "Id": "80edbdd314d94103b09e16e29df9208b",
+      "Name": "Join end?",
+      "Type": "boolean",
+      "Value": "false",
+      "Description": "Выбор между значениями true и false."
+    }
+  ],
+  "Outputs": [
+    {
+      "Id": "eb54efc302c343fe9126f043957505de",
+      "Name": "Стены",
+      "Type": "unknown",
+      "InitialValue": "",
+      "Description": "Визуализация входного элемента узла."
+    }
+  ],
+  "Nodes": [
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "NodeType": "BooleanInputNode",
+      "InputValue": false,
+      "Id": "9a75ccf993a9462c89e81635a9368589",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "38bdf7a897034111a5d4760c16178339",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выбор между значениями true и false."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "NodeType": "BooleanInputNode",
+      "InputValue": false,
+      "Id": "80edbdd314d94103b09e16e29df9208b",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "c1c0b865ef134fffbf515ac9c6485651",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выбор между значениями true и false."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "# Загрузить стандартную библиотеку Python и библиотеку DesignScript\r\nimport sys\r\nimport clr\r\n\r\nclr.AddReference('RevitAPI')\r\nimport Autodesk.Revit.DB as DB\r\nclr.AddReference(\"RevitServices\")\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\nuiapp = DocumentManager.Instance.CurrentUIApplication\r\napp = uiapp.Application\r\nuidoc = uiapp.ActiveUIDocument\r\n\r\n\r\ndef for_each(f):\r\n    selection = uidoc.Selection.GetElementIds()\r\n    for e_id in selection:\r\n        element = doc.GetElement(e_id)\r\n        f(element)\r\n\r\n\r\ndef get_selected(as_list=False):\r\n    if as_list:\r\n        return list(_get_selected())\r\n    return _get_selected()\r\n\r\n\r\ndef _get_selected():\r\n    selection = uidoc.Selection.GetElementIds()\r\n    for e_id in selection:\r\n        element = doc.GetElement(e_id)\r\n        yield element\r\n\r\n\r\ndef get_selected_by_cat(cat, as_list=False):\r\n    \"\"\"\r\n    Получить элементы в пользовательском выборе определенной категории\r\n\r\n    :param cat: BuiltInCategory\r\n    :type cat: DB.BuiltInCategory\r\n    :param as_list: Вернуть лист или генератор\r\n    :type as_list: bool\r\n    :return: Элементы опр. категории выбранные пользователем\r\n    :rtype: DB.Element\r\n    \"\"\"\r\n\r\n    if as_list:\r\n        return list(_get_selected_by_cat(cat))\r\n    return _get_selected_by_cat(cat)\r\n\r\n\r\ndef _get_selected_by_cat(cat):\r\n    \"\"\"\r\n    Генератор. Получить элементы в пользовательском выборе определенной категории\r\n\r\n    :param cat: BuiltInCategory\r\n    :type cat: DB.BuiltInCategory\r\n    :return: Элементы опр. категории выбранные пользователем\r\n    :rtype: DB.Element\r\n    \"\"\"\r\n\r\n    for elem in get_selected():\r\n        if elem.Category.Id == DB.Category.GetCategory(doc, cat).Id:\r\n            yield elem\r\n\r\n\r\ndef transaction(f, doc=doc, msg=\"Dynamo Transaction\"):\r\n    def wrapped(*args, **kwargs):\r\n        TransactionManager.Instance.EnsureInTransaction(doc)\r\n        r = f(*args, **kwargs)\r\n        TransactionManager.Instance.TransactionTaskDone()\r\n        return r\r\n\r\n    return wrapped\r\n\r\n\r\ndef main():\r\n    WALLS = get_selected_by_cat(DB.BuiltInCategory.OST_Walls)\r\n    START = IN[0]\r\n    END = IN[1]\r\n    return change_wall_join(WALLS, START, END)\r\n\r\n\r\ndef change_wall_join(walls, start=True, end=True):\r\n    res = []\r\n    for wall in walls:\r\n        set_wall_join(wall, side=0, join=start)\r\n        set_wall_join(wall, side=1, join=end)\r\n        res.append(wall)\r\n    return res\r\n\r\n\r\n@transaction\r\ndef set_wall_join(wall, side=1, join=True):\r\n    if DB.WallUtils.IsWallJoinAllowedAtEnd(wall, side) is not join:\r\n        if join is True:\r\n            DB.WallUtils.AllowWallJoinAtEnd(wall, side)\r\n        else:\r\n            DB.WallUtils.DisallowWallJoinAtEnd(wall, side)\r\n\r\n\r\nif __name__ == '<module>':\r\n    OUT = main()\r\n",
+      "VariableInputPorts": true,
+      "Id": "e36138c97db64d6e813cd85662f55d71",
+      "Inputs": [
+        {
+          "Id": "411ce423f37c4af4993803ccdab8b405",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "fb6d97da10ac40b48225231d871ef3a0",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "f56f27d909b9468a8019b37c3cc1590e",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выполнение встроенного сценария IronPython."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "NodeType": "ExtensionNode",
+      "Id": "eb54efc302c343fe9126f043957505de",
+      "Inputs": [
+        {
+          "Id": "7ef3bf203020436ba6ed54afca7ad532",
+          "Name": "",
+          "Description": "Узел для оценки.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "94c0233ede3b47d885fa7fe7e7d64801",
+          "Name": "",
+          "Description": "Просмотр содержимого.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Визуализация входного элемента узла."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "38bdf7a897034111a5d4760c16178339",
+      "End": "411ce423f37c4af4993803ccdab8b405",
+      "Id": "ab5fd37e82824a12a6e1e158f1f68c16"
+    },
+    {
+      "Start": "c1c0b865ef134fffbf515ac9c6485651",
+      "End": "fb6d97da10ac40b48225231d871ef3a0",
+      "Id": "465b0c4dab8e4083b7d60fce1ef4d10a"
+    },
+    {
+      "Start": "f56f27d909b9468a8019b37c3cc1590e",
+      "End": "7ef3bf203020436ba6ed54afca7ad532",
+      "Id": "726d5139ea8244eda07102298441538f"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.6.1.8786",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Фоновый просмотр",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "NodeViews": [
+      {
+        "ShowGeometry": true,
+        "Name": "Join start?",
+        "Id": "9a75ccf993a9462c89e81635a9368589",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 388.0,
+        "Y": 566.0
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Join end?",
+        "Id": "80edbdd314d94103b09e16e29df9208b",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 389.0,
+        "Y": 644.0
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Python Script",
+        "Id": "e36138c97db64d6e813cd85662f55d71",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 660.0,
+        "Y": 565.0
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Стены",
+        "Id": "eb54efc302c343fe9126f043957505de",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": true,
+        "Excluded": false,
+        "X": 973.0,
+        "Y": 596.0
+      }
+    ],
+    "Annotations": [],
+    "X": -20.0,
+    "Y": -40.0,
+    "Zoom": 1.0
+  }
+}
