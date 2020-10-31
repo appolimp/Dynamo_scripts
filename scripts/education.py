@@ -14,20 +14,30 @@ from color_param import find_filter, set_rule
 from Autodesk.Revit.UI.Selection import ISelectionFilter, PickBoxStyle
 from rpw import revit, db, ui, doc, logger, DB, UI
 from collections import namedtuple
+from base.selection import get_selected_by_cat, get_selected
 
 
 class MySelectionFilter(ISelectionFilter):
-    def __init__(self, *args):
+    def __init__(self, cat, *args):
         ISelectionFilter.__init__(self, *args)
+        self.cat = cat
 
     def AllowElement(self, elem):
-        wall_id = DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_Walls).Id
-        if elem.Category.Id == wall_id:
+        cat_id = DB.Category.GetCategory(doc, self.cat).Id
+        if elem.Category.Id == cat_id:
             return True
         return False
 
     def AllowReference(self, reference, position):
         return False
+
+
+class MyRefFilter(ISelectionFilter):
+    def AllowElement(self, elem):
+        return True
+
+    def AllowReference(self, reference, position):
+        return True
 
 
 class MyContext(DB.IExportContext):
@@ -84,294 +94,26 @@ class Creator:
         return polygons
 
 
-class EdgeColumn:
-    """Find border for column"""
-    Edge = namedtuple('edge', ['symbol', 'instance'])
-    Border = namedtuple('Border', ['left', 'right', 'up', 'down'])
-
-    def __init__(self, column):
-        self.column = column
-        self.main_dir = self.column.FacingOrientation
-
-        self.fill_border()
-
-    def fill_border(self):
-        geom = self._get_geometry_element(self.column)
-        # instance_solid = self._get_instanse_solid(geom)
-        instance_solid = self._get_solid(geom, symbol="instance")
-        # symbol_solid = self._get_symbol_solid(geom)
-        symbol_solid = self._get_solid(geom, symbol="symbol")
-
-        self._fill_border(symbol_solid, instance_solid)
-
-    def _fill_border(self, symbol_solid, instance_solid):
-        """
-        Fill border edge
-
-        :param symbol_solid:
-        :type symbol_solid:
-        :param instance_solid:
-        :type instance_solid:
-        """
-
-        for symbol, instance in zip(symbol_solid.Faces, instance_solid.Faces):
-            normal = symbol.FaceNormal
-
-            if normal.IsAlmostEqualTo(DB.XYZ.BasisX):
-                right = self.Edge(symbol, instance)
-            elif normal.IsAlmostEqualTo(-DB.XYZ.BasisX):
-                left = self.Edge(symbol, instance)
-            elif normal.IsAlmostEqualTo(DB.XYZ.BasisY):
-                down = self.Edge(symbol, instance)
-            elif normal.IsAlmostEqualTo(-DB.XYZ.BasisY):
-                up = self.Edge(symbol, instance)
-            else:
-                ScriptError('Normal faces == {}'.format(normal))
-
-        self.border = self.Border(left, right, up, down)
-        logging.debug('Fill Borders')
-
-    @staticmethod
-    def _get_geometry_element(elem):
-        """
-        Get Geometry element by element and option
-
-        :return: GeometryElement
-        :rtype: DB.GeometryElement
-        """
-
-        opt = app.Create.NewGeometryOptions()
-        opt.View = doc.ActiveView
-        opt.ComputeReferences = True
-
-        geom = elem.get_Geometry(opt)
-        logging.debug('Get GeometryElement')
-
-        return geom
-
-    @staticmethod
-    def _get_instanse_solid(geom):
-        for elem in geom:
-            if type(elem) is DB.Solid and elem.Volume:
-                logging.debug('Get instanse solid')
-                return elem
-
-    def _get_symbol_solid(self, geom):
-        for geom_inst in geom:
-            if type(geom_inst) is DB.GeometryInstance:
-                logging.debug('Get GeometryInstance for symbol')
-                break
-
-        symbol_geom = self._get_geometry_element(geom_inst.Symbol)
-        symbol_solid = self._get_instanse_solid(symbol_geom)
-        logging.debug('Get Solid for symbol')
-        return symbol_solid
-
-    @staticmethod
-    def _get_solid(geom, symbol="symbol"):
-        """
-        Get solid with valid Id by geometry for instanse or solid
-
-        :param geom: GeometryElement
-        :type geom: DB.GeometryElement
-        :param symbol: symbol or instanse
-        :type symbol: str
-        :return: Solid
-        :rtype: DB.Solid
-        """
-
-        for instanse in geom:
-            solids = getattr(instanse, 'Get' + symbol.capitalize() + 'Geometry')()
-            logging.debug('Get list of Solids for {}'.format(symbol))
-            break
-        else:
-            raise ScriptError('List of solids not found for {}'.format(symbol))
-
-        for solid in solids:
-            if solid.GraphicsStyleId.IntegerValue != -1:
-                logging.debug('Get normal Solid for {}'.format(symbol))
-                return solid
-
-        raise ScriptError('Normal solids not found for {}'.format(symbol))
-
-    def get_left_and_right_face_by_direct(self, direct):
-
-        func = self.main_dir.CrossProduct(direct)
-
-        if func.IsAlmostEqualTo(DB.XYZ.Zero):
-            logging.debug('Get left/right border')
-            return self.border.left.symbol, self.border.right.symbol
-        elif func.IsAlmostEqualTo(DB.XYZ.BasisZ) or func.IsAlmostEqualTo(-DB.XYZ.BasisZ):
-            logging.debug('Get down/up border')
-            return self.border.down.symbol, self.border.up.symbol
-        else:
-            raise ScriptError('Face not found')
-
-    def get_out_line_by_direct(self, direct, offset):
-
-        func = self.main_dir.CrossProduct(direct)
-        if func.IsAlmostEqualTo(DB.XYZ.Zero):
-            logging.debug('Get down/up border for out line')
-            return self._get_out_line_by_faces(self.border.down.instance, self.border.up.instance, offset)
-        if func.IsAlmostEqualTo(DB.XYZ.BasisZ) or func.IsAlmostEqualTo(-DB.XYZ.BasisZ):
-            logging.debug('Get left/right border for out line')
-            return self._get_out_line_by_faces(self.border.left.instance, self.border.right.instance, offset)
-
-    def _get_out_line_by_faces(self, first, second, offset):
-        border, normal = self.get_down_border_and_normal(first, second)
-
-        center_point = border.Origin - normal * offset
-        out_line = DB.Line.CreateUnbound(center_point, border.YVector)
-        logging.debug('Out line was created')
-        return out_line
-
-    @staticmethod
-    def get_down_border_and_normal(first, second):
-        first_normal, second_normal = map(lambda x: x.FaceNormal, (first, second))
-        if first_normal.Y > second_normal.Y:
-            return first, first_normal
-        return second, second_normal
-
-
-class ColumnFilter(ISelectionFilter):
-    def AllowElement(self, elem):
-        column_id = DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_StructuralColumns).Id
-        if elem.Category.Id == column_id:
-            return True
-        return False
-
-
 @transaction
 def main():
-
-    column = UnwrapElement(IN[0])
-    opt = app.Create.NewGeometryOptions()
-    opt.View = doc.ActiveView
-    opt.ComputeReferences = True
-
-    geom = column.get_Geometry(opt)
-    print 1, geom
-
-    for inst in geom:
-        if type(inst) is DB.Solid:
-            print 2, inst
-            break
-
-    # solids = inst
-    # print 3, solids
-
-    for face in inst.Faces:
-        if face.FaceNormal.IsAlmostEqualTo(DB.XYZ.BasisX):
-            print 4, face
-            break
-
-    grid = get_two_lines('<Скрыто>')[0]
-    out_line = get_two_lines('<Линии>')[0].GeometryCurve
-
-    ref_arr = DB.ReferenceArray()
-    ref_arr.Append(DB.Reference(grid))
-    ref_arr.Append(face.Reference)
-
-    dim = doc.Create.NewDimension(doc.ActiveView, out_line, ref_arr)
-    logging.debug('Dim was created')
+    pass
 
 
 
+def user_selection_by_cat(cat):
+    elem_filter = MySelectionFilter(cat)
+    elems = uidoc.Selection.PickElementsByRectangle(elem_filter, 'select elements {}'.format(cat))
+
+    logging.info('User select {}'.format(len(elems)))
+    return elems
 
 
+def get_user_point():
+    point = uidoc.Selection.PickPoint('Select point')
+    return point
 
 
-
-
-    """
-    GRID = UnwrapElement(IN[0])
-    OFFSET = IN[1]
-    LEFT_SHIFT = IN[2]
-    RIGHT_SHIFT = IN[3]
-
-    # columns = user_selection_columns()
-    # for column in columns:
-    #     create_dimension_by_column(column, GRID, OFFSET, LEFT_SHIFT, RIGHT_SHIFT)
-
-    column = DB.FilteredElementCollector(doc, doc.ActiveView.Id).OfCategory(
-        DB.BuiltInCategory.OST_StructuralColumns).FirstElement()
-
-    create_dimension_by_column(column, GRID, OFFSET, LEFT_SHIFT, RIGHT_SHIFT)
-    """
-
-
-def user_selection_columns():
-    columns = uidoc.Selection.PickElementsByRectangle(ColumnFilter(), 'select columns')
-    logging.info('User select {}'.format(len(columns)))
-    return columns
-
-
-def create_dimension_by_column(column, grid, offset, right_shift, left_shift):
-
-    # line = get_two_lines('<Линии>')[0]
-    grid = get_two_lines('<Скрыто>')[0]
-    direct = grid.GeometryCurve.Direction
-    # direct = grid.Curve.Direction
-
-    edge_column = EdgeColumn(column)
-    left_face, right_face = edge_column.get_left_and_right_face_by_direct(direct)
-
-    ref_arr = DB.ReferenceArray()
-    ref_arr.Append(DB.Reference(grid))
-    ref_arr.Append(left_face.Reference)
-    ref_arr.Append(right_face.Reference)
-
-    out_line = edge_column.get_out_line_by_direct(direct, offset)
-
-    dim = doc.Create.NewDimension(doc.ActiveView, out_line, ref_arr)
-    logging.debug('Dim was created')
-
-    update_segments(dim.Segments, left_shift, right_shift)
-
-    logging.info('Dim was created')
-
-
-def update_segments(segments, left_shift, right_shift):
-
-    first_segment, second_segment = segments
-    direct = (second_segment.Origin - first_segment.Origin).Normalize()
-
-    if direct.X >= 0 and direct.Y >= 0:
-        left = direct * left_shift
-        right = direct * right_shift
-    elif direct.X >= 0 and direct.Y < 0:
-        left = direct * left_shift
-        right = direct * right_shift
-    elif direct.X < 0 and direct.Y >= 0:
-        left = -direct * left_shift
-        right = -direct * right_shift
-    elif direct.X < 0 and direct.Y < 0:
-        left = -direct * left_shift
-        right = -direct * right_shift
-
-    if left_shift:
-        change_text_position_segments_by_value(first_segment, left)
-    if right_shift:
-        change_text_position_segments_by_value(second_segment, -right)
-
-
-def change_text_position_segments_by_value(segment, vector):
-    """
-    Moved text position in DimensionSegment by vector
-
-    :param segment:DimensionSegment
-    :type segment: DB.DimensionSegment
-    :param vector: Vector
-    :type vector: DB.XYZ
-    """
-
-    pos = segment.TextPosition
-    new_pos = DB.Transform.CreateTranslation(vector).OfPoint(pos)
-    segment.TextPosition = new_pos
-    logging.debug('Text position was moved by {}'.format(vector))
-
-
-def get_two_lines(style_name):
+def get_lines(style_name):
     lines = DB.FilteredElementCollector(doc, doc.ActiveView.Id).OfCategory(DB.BuiltInCategory.OST_Lines)
     res = []
     for line in lines:
@@ -978,7 +720,7 @@ def convert_two_point(first, second):
 
 
 def user_selection():
-    selection_filter = MySelectionFilter()
+    selection_filter = MySelectionFilter1()
     walls = uidoc.Selection.PickElementsByRectangle(selection_filter, 'select walls')
     return walls
 
@@ -1098,7 +840,7 @@ def filter_collector():
 
 if __name__ == '__main__':
     logging.basicConfig(
-        filename=None, level=logging.DEBUG,
+        filename=None, level=logging.INFO,
         format='[%(asctime)s] %(levelname).1s %(message)s',
         datefmt='%Y.%m.%d %H:%M:%S')
     start = time.time()
