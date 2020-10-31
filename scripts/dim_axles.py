@@ -6,6 +6,9 @@ from Autodesk.Revit.UI.Selection import ISelectionFilter
 import logging
 
 
+SECTION_TYPE = [DB.ViewType.Section, DB.ViewType.Elevation]
+
+
 class MySelectionFilter(ISelectionFilter):
     def __init__(self, cat, *args):
         ISelectionFilter.__init__(self, *args)
@@ -33,22 +36,30 @@ class OutLineDim:
         self.__offset = self._offset_coroutine()
 
     @classmethod
-    def create_by_point_normal_side(cls, point, normal, side):
-        sign_normal = cls._calc_direction_by_side(normal, side - point)
+    def create_by_two_point_and_normal(cls, normal):
+        point = get_user_point()
+        side_point = get_user_point()
+
+        sign_normal = cls._calc_direction_by_side(normal, side_point - point)
+
         return cls(point, sign_normal)
 
     @staticmethod
     def _calc_direction_by_side(normal, side):
-        dir_norm = normal.CrossProduct(DB.XYZ.BasisZ)
-        side = dir_norm.CrossProduct(side).Z
-
-        normal = normal if side > 0 else -normal
+        if doc.ActiveView.ViewType in SECTION_TYPE:
+            normal = normal if side.Z > 0 else -normal
+        else:
+            dir_norm = normal.CrossProduct(DB.XYZ.BasisZ)
+            side_z = dir_norm.CrossProduct(side).Z
+            normal = normal if side_z > 0 else -normal
 
         logging.debug('Normal calculated {}'.format(normal))
         return normal
 
     def get_outline(self):
-        direction = self.normal.CrossProduct(DB.XYZ.BasisZ)
+        view_normal = doc.ActiveView.ViewDirection
+        direction = self.normal.CrossProduct(view_normal)
+
         origin = self.origin + self.normal * self._offset
 
         out_line = DB.Line.CreateUnbound(origin, direction)
@@ -77,7 +88,9 @@ class OutLineDim:
 class AxlesDim:
     def __init__(self, axles):
         self.axles = axles
-        self.direction = self.axles[0].Curve.Direction
+
+        one_curve = axles[0].GetCurvesInView(DB.DatumExtentType.ViewSpecific, doc.ActiveView)[0]
+        self.direction = one_curve.Direction
 
     @property
     def as_ref_arr(self):
@@ -145,6 +158,14 @@ class AxisCrop:
             self._modify_bubble(is_start)
 
     def crop_curve_by_line(self, crop_line):
+        if doc.ActiveView.ViewType in SECTION_TYPE:
+            logging.debug('Line crop in section')
+            return self._crop_curve_by_line_on_section(crop_line)
+        else:
+            logging.debug('Line crop in plane')
+            return self._crop_curve_by_line_on_plane(crop_line)
+
+    def _crop_curve_by_line_on_plane(self, crop_line):
         flatten_curve = self._make_flatten_and_extend(self.curve)
         flatten_crop_line = self._make_flatten_and_extend(crop_line)
 
@@ -153,23 +174,31 @@ class AxisCrop:
 
         if is_intersect == DB.SetComparisonResult.Overlap:
             point = intersect.Value[0].XYZPoint
-            height_curve, is_start = self.create_line_by_closest_point(point, self.curve.Origin.Z)
+            h_point = point + DB.XYZ.BasisZ * self.curve.Origin.Z
+            height_curve, is_start = self.create_line_by_closest_point(h_point)
 
             return height_curve, is_start
 
         raise ScriptError('Line not intersect')
 
-    def create_line_by_closest_point(self, point, height):
+    def _crop_curve_by_line_on_section(self, crop_line):
+        origin = self.curve.Origin
+        height = crop_line.Origin
+        h_point = DB.XYZ(origin.X, origin.Y, height.Z)
+
+        height_curve, is_start = self.create_line_by_closest_point(h_point)
+        return height_curve, is_start
+
+    def create_line_by_closest_point(self, point):
         start = self.curve.GetEndPoint(0)
         end = self.curve.GetEndPoint(1)
-        h_point = point + DB.XYZ.BasisZ * height
 
         if start.DistanceTo(point) > end.DistanceTo(point):
             is_start = False
-            line = DB.Line.CreateBound(start, h_point)
+            line = DB.Line.CreateBound(start, point)
         else:
             is_start = True
-            line = DB.Line.CreateBound(h_point, end)
+            line = DB.Line.CreateBound(point, end)
 
         logging.debug('Cropped line created, is_start == {}'.format(is_start))
         return line, is_start
@@ -220,10 +249,7 @@ def main():
     EDIT_BUBBLE = IN[3]
 
     axles = AxlesDim.get_by_user()
-
-    point = get_user_point()
-    side_point = get_user_point()
-    outline = OutLineDim.create_by_point_normal_side(point, axles.direction, side_point)
+    outline = OutLineDim.create_by_two_point_and_normal(axles.direction)
 
     dims = []
     if CREATE_DIM:
@@ -261,8 +287,22 @@ def user_selection_by_cat(cat):
 
 
 def get_user_point():
+    if doc.ActiveView.ViewType in SECTION_TYPE:
+        create_work_plane_on_view(doc.ActiveView)
+
     point = uidoc.Selection.PickPoint('Select point')
     return point
+
+
+def create_work_plane_on_view(view):
+    if view.SketchPlane is None:
+        plane = DB.Plane.CreateByNormalAndOrigin(view.ViewDirection, view.Origin)
+        sketch_plane = DB.SketchPlane.Create(doc, plane)
+        view.SketchPlane = sketch_plane
+        view.HideActiveWorkPlane()
+        logging.debug('WorkPlane was created on view: #{}'.format(view.Id))
+    else:
+        logging.debug('WorkPlane already exist: #{}'.format(view.Id))
 
 
 if __name__ == '__main__':
