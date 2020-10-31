@@ -110,12 +110,15 @@ class AxlesDim:
 
         return AxlesDim(axles)
 
-    def crop_and_bubble(self, crop_line, bubble_modify=True):
+    def crop_and_bubble(self, crop_line, crop_modify=True, bubble_modify=True):
         for axis in self.axles:
-            AxisCrop(axis).modify_axis(crop_line, bubble_modify)
+            AxisCrop(axis).modify_axis(crop_line, crop_modify, bubble_modify)
 
         logging.info(
-            '{} axles was cropped and {}updated bubbles'.format(len(self.axles), '' if bubble_modify else 'not '))
+            '{} axles {}was cropped and {}updated bubbles'.format(
+                len(self.axles),
+                '' if crop_modify else 'not ',
+                '' if bubble_modify else 'not '))
 
     def get_corners(self):
         corners = self._get_corners()
@@ -148,11 +151,11 @@ class AxisCrop:
         self.axis = axis
         self.curve = self.axis.GetCurvesInView(DB.DatumExtentType.ViewSpecific, doc.ActiveView)[0]
 
-    def modify_axis(self, crop_line, bubble_modify=True):
+    def modify_axis(self, crop_line, crop_modify=True, bubble_modify=True):
         new_curve, is_start = self.crop_curve_by_line(crop_line)
-
-        self.axis.SetCurveInView(DB.DatumExtentType.ViewSpecific, doc.ActiveView, new_curve)
-        logging.debug('Axis {} curve: crop in view'.format(self.axis.Name))
+        if crop_modify:
+            self.axis.SetCurveInView(DB.DatumExtentType.ViewSpecific, doc.ActiveView, new_curve)
+            logging.debug('Axis {} curve: crop in view'.format(self.axis.Name))
 
         if bubble_modify:
             self._modify_bubble(is_start)
@@ -244,38 +247,29 @@ class AxisCrop:
 @transaction
 def main():
     CREATE_DIM = IN[0]
-    CREATE_DIM_SECOND = IN[1]
+    CREATE_DIM_ALL = IN[1]
     CROP_AXLES = IN[2]
     EDIT_BUBBLE = IN[3]
 
     axles = AxlesDim.get_by_user()
     outline = OutLineDim.create_by_two_point_and_normal(axles.direction)
 
-    dims = []
     if CREATE_DIM:
-        dims = create_dim_axles_by_outline_and_axles(axles, outline, second_line=CREATE_DIM_SECOND)
+        dim_line = outline.get_outline()
+        create_dim_axles_by_outline_and_axles(axles, dim_line)
 
-    if CROP_AXLES:
-        crop_line = outline.get_outline()
-        axles.crop_and_bubble(crop_line, bubble_modify=EDIT_BUBBLE)
-
-    return dims
-
-
-def create_dim_axles_by_outline_and_axles(axles, outline, second_line=True):
-    dim_line = outline.get_outline()
-    dim = doc.Create.NewDimension(doc.ActiveView, dim_line, axles.as_ref_arr)
-    dims = [dim]
-    logging.info('Main dim created')
-
-    if second_line and len(axles) > 2:
-        corner_line = outline.get_outline()
+    if CREATE_DIM_ALL and len(axles) > 2:
         corner_axles = axles.get_corners()
-        corner_dim = doc.Create.NewDimension(doc.ActiveView, corner_line, corner_axles.as_ref_arr)
-        dims.append(corner_dim)
-        logging.info('Second dim created')
+        corner_line = outline.get_outline()
+        create_dim_axles_by_outline_and_axles(corner_axles, corner_line)
 
-    return dims
+    crop_line = outline.get_outline()
+    axles.crop_and_bubble(crop_line, crop_modify=CROP_AXLES, bubble_modify=EDIT_BUBBLE)
+
+
+def create_dim_axles_by_outline_and_axles(axles, dim_line):
+    doc.Create.NewDimension(doc.ActiveView, dim_line, axles.as_ref_arr)
+    logging.info('Dim created for {} axles'.format(len(axles)))
 
 
 def user_selection_by_cat(cat):

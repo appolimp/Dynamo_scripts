@@ -16,7 +16,7 @@
     },
     {
       "Id": "c822d0e90b894b6e820093e3cc2c4923",
-      "Name": "Create second dimension",
+      "Name": "Create all dimension",
       "Type": "boolean",
       "Value": "true",
       "Description": "Выбор между значениями true и false."
@@ -404,7 +404,7 @@
       },
       {
         "ShowGeometry": true,
-        "Name": "Create second dimension",
+        "Name": "Create all dimension",
         "Id": "c822d0e90b894b6e820093e3cc2c4923",
         "IsSetAsInput": true,
         "IsSetAsOutput": false,
