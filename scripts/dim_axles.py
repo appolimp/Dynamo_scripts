@@ -13,12 +13,34 @@ class MySelectionFilter(ISelectionFilter):
     def __init__(self, cat, *args):
         ISelectionFilter.__init__(self, *args)
         self.cat = cat
+        self.valid_direction = None
 
     def AllowElement(self, elem):
         cat_id = DB.Category.GetCategory(doc, self.cat).Id
         if elem.Category.Id == cat_id:
-            return True
+            if self.cat is DB.BuiltInCategory.OST_Grids and self._is_valid_direction(elem):
+                return True
+
         return False
+
+    def _is_valid_direction(self, axis):
+        """
+        Identity is collinear axis or not
+
+        :param axis: DB.Grid
+        :return: Is collinear
+        :rtype: bool
+        """
+
+        curve = axis.GetCurvesInView(DB.DatumExtentType.ViewSpecific, doc.ActiveView)[0]
+        direction = curve.Direction
+
+        if self.valid_direction is None:
+            self.valid_direction = direction
+            return True
+
+        prod = self.valid_direction.CrossProduct(direction)
+        return prod.IsAlmostEqualTo(DB.XYZ.Zero, 0.001)
 
     def AllowReference(self, reference, position):
         return False
