@@ -12,6 +12,10 @@ OFFSET_DIM_1 = 10 / 304.8
 SCALE_WIDTH_TEXT_1_1 = 1.8
 
 
+class FacesNotOrto(ScriptError):
+    pass
+
+
 class ColumnFilter(ISelectionFilter):
     def AllowElement(self, elem):
         column_id = DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_StructuralColumns).Id
@@ -45,7 +49,7 @@ class ColumnEdge:
             elif abs(round(face.FaceNormal.Z, 3)) == 1:
                 pass
             else:
-                raise ScriptError(str(face.FaceNormal))
+                raise FacesNotOrto(str(face.FaceNormal))
 
         self.vertical_faces = vertical_faces[:2]
         self.horizontal_faces = horizontal_faces[:2]
@@ -76,22 +80,22 @@ class ColumnEdge:
 
     def get_parallel_faces_by_dir(self, direct):
         if self._is_parallel(direct, self.vertical):
-            logging.debug('Get horizontal faces for element'.format(len(self.horizontal_faces)))
+            logging.debug('Get {} horizontal faces for element as parallel'.format(len(self.horizontal_faces)))
             return self.horizontal_faces
 
         elif self._is_parallel(direct, self.horizontal):
-            logging.debug('Get vertical faces for element'.format(len(self.vertical_faces)))
+            logging.debug('Get {} vertical faces for element as parallel'.format(len(self.vertical_faces)))
             return self.vertical_faces
 
-        raise ScriptError('Direction not valid {}'.format(direct))
+        raise FacesNotOrto('Direction not valid {}'.format(direct))
 
     def get_perpendicular_faces_by_dir(self, direct):
         if self._is_parallel(direct, self.vertical):
-            logging.debug('Get vertical faces for element'.format(len(self.horizontal_faces)))
+            logging.debug('Get {} vertical faces for element as perpendicular'.format(len(self.horizontal_faces)))
             return self.vertical_faces
 
         elif self._is_parallel(direct, self.horizontal):
-            logging.debug('Get horizontal faces for element'.format(len(self.vertical_faces)))
+            logging.debug('Get {} horizontal faces for element as perpendicular'.format(len(self.vertical_faces)))
             return self.horizontal_faces
 
     def create_reference_arr_by_dir(self, direction):
@@ -117,8 +121,11 @@ class ColumnEdge:
         faces = self.get_perpendicular_faces_by_dir(direction)
         side = self._get_one_face(faces)
         offset = OFFSET_DIM_1 * k_offset * doc.ActiveView.Scale
+
         center_point = side.Origin + side.FaceNormal * offset
-        out_line = DB.Line.CreateUnbound(center_point, side.YVector)
+        direction = side.FaceNormal.CrossProduct(DB.XYZ.BasisZ)
+
+        out_line = DB.Line.CreateUnbound(center_point, direction)
 
         logging.debug('Outline was created with offset = {}'.format(offset))
         return out_line
@@ -324,11 +331,22 @@ def create_dim_for_column(column, k_offset=4, k_space=1, k_shift_space=0.8):
 
     dims = []
     for grid in grids:
-        dim = create_dim_for_column_and_grid(column, grid, k_offset)
+        try:
+            dim = create_dim_for_column_and_grid(column, grid, k_offset)
+        except FacesNotOrto:
+            logging.error('Problem with face for {} in {}-{} '.format(
+                grid.Name, grids[0].Name, grids[1].Name))
+            continue
+
         dims.append(dim)
 
-        text_position = Dim2TextPosition(dim, k_space, k_shift_space)
-        text_position.update()
+        # TODO add 1 segment
+        if dim.Segments.Size == 2:
+            text_position = Dim2TextPosition(dim, k_space, k_shift_space)
+            text_position.update()
+        else:
+            logging.error('Dim for column at axles {}-{} have 1 segments for {}'.format(
+                grids[0].Name, grids[1].Name, grid.Name))
 
     logging.debug('Create {} dimension for column'.format(len(dims)))
 
@@ -351,9 +369,8 @@ def user_selection_columns():
 
 
 if __name__ == '__main__':
-    level = getattr(logging, IN[3])
     logging.basicConfig(
-        filename=None, level=level,
+        filename=None, level=logging.INFO,
         format='[%(asctime)s] %(levelname).1s %(message)s',
         datefmt='%Y.%m.%d %H:%M:%S')
 
