@@ -30,13 +30,6 @@
       "Value": "0.8",
       "NumberType": "Double",
       "Description": "Создание числа."
-    },
-    {
-      "Id": "6be393d246f44dc59279e42483356fe2",
-      "Name": "Level loging",
-      "Type": "string",
-      "Value": "INFO",
-      "Description": "Создание строки."
     }
   ],
   "Outputs": [
@@ -156,15 +149,6 @@
           "Level": 2,
           "UseLevels": false,
           "KeepListStructure": false
-        },
-        {
-          "Id": "2d6fe14a6ffc4646aa5dcd6748467468",
-          "Name": "item3",
-          "Description": "Индекс элемента #3",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
         }
       ],
       "Outputs": [
@@ -272,26 +256,6 @@
       ],
       "Replication": "Disabled",
       "Description": "Создание числа."
-    },
-    {
-      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
-      "NodeType": "StringInputNode",
-      "InputValue": "INFO",
-      "Id": "6be393d246f44dc59279e42483356fe2",
-      "Inputs": [],
-      "Outputs": [
-        {
-          "Id": "78c1a3641c284b469610f8240830ecc1",
-          "Name": "",
-          "Description": "String",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        }
-      ],
-      "Replication": "Disabled",
-      "Description": "Создание строки."
     }
   ],
   "Connectors": [
@@ -324,11 +288,6 @@
       "Start": "d8a0e3528ef845e1a33f0c2727dcfbf8",
       "End": "1b780361615743e887e8b9be53026bab",
       "Id": "179115599e344f169ceacba902acfbe6"
-    },
-    {
-      "Start": "78c1a3641c284b469610f8240830ecc1",
-      "End": "2d6fe14a6ffc4646aa5dcd6748467468",
-      "Id": "ca775340e4f44499aa5518e1dcd3ebd3"
     }
   ],
   "Dependencies": [],
@@ -434,21 +393,11 @@
         "Excluded": false,
         "X": -131.50303181966311,
         "Y": 515.75509648400725
-      },
-      {
-        "ShowGeometry": true,
-        "Name": "Level loging",
-        "Id": "6be393d246f44dc59279e42483356fe2",
-        "IsSetAsInput": true,
-        "IsSetAsOutput": false,
-        "Excluded": false,
-        "X": -14.605225851743057,
-        "Y": 598.20258909452991
       }
     ],
     "Annotations": [],
-    "X": 441.16581406824616,
-    "Y": -13.146559569550959,
-    "Zoom": 1.036057875600608
+    "X": 260.22698315542709,
+    "Y": 106.87001517231897,
+    "Zoom": 0.87323933894951833
   }
 }
