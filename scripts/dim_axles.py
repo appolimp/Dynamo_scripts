@@ -10,18 +10,31 @@ SECTION_TYPE = [DB.ViewType.Section, DB.ViewType.Elevation]
 
 
 class MySelectionFilter(ISelectionFilter):
-    def __init__(self, cat, *args):
-        ISelectionFilter.__init__(self, *args)
+    def __init__(self, cat, elem):
+        ISelectionFilter.__init__(self)
         self.cat = cat
-        self.valid_direction = None
+        self.valid_direction = self._calc_valid_direction_or_none(elem)
 
     def AllowElement(self, elem):
-        cat_id = DB.Category.GetCategory(doc, self.cat).Id
-        if elem.Category.Id == cat_id:
-            if self.cat is DB.BuiltInCategory.OST_Grids and self._is_valid_direction(elem):
+        if type(elem) is self.cat:
+            if self.valid_direction is None or self._is_valid_direction(elem):
                 return True
 
         return False
+
+    def _calc_valid_direction_or_none(self, axis):
+        """
+        Calc direction of first axis
+
+        :param axis: DB.Grid
+        :return: DB.XYZ
+        """
+
+        if type(axis) is self.cat:
+            curve = axis.GetCurvesInView(DB.DatumExtentType.ViewSpecific, doc.ActiveView)[0]
+            direction = curve.Direction
+
+            return direction
 
     def _is_valid_direction(self, axis):
         """
@@ -34,10 +47,6 @@ class MySelectionFilter(ISelectionFilter):
 
         curve = axis.GetCurvesInView(DB.DatumExtentType.ViewSpecific, doc.ActiveView)[0]
         direction = curve.Direction
-
-        if self.valid_direction is None:
-            self.valid_direction = direction
-            return True
 
         prod = self.valid_direction.CrossProduct(direction)
         return prod.IsAlmostEqualTo(DB.XYZ.Zero, 0.001)
@@ -209,8 +218,9 @@ class AxlesDim:
         axles = get_selected_by_cat(DB.BuiltInCategory.OST_Grids, as_list=True)
         logging.info('User pre-selected {} axles'.format(len(axles)))
 
-        if len(axles) < 1:
-            axles = user_selection_by_cat(DB.BuiltInCategory.OST_Grids)
+        if len(axles) < 2:
+            elem = axles[0] if len(axles) == 1 else None
+            axles = user_selection_by_cat_and_elem(DB.Grid, elem)
 
         return AxlesDim(axles)
 
@@ -510,16 +520,17 @@ def create_dim_by_reference_and_outline(refs, outline):
     logging.info('Dim created for {} axles'.format(refs.Size))
 
 
-def user_selection_by_cat(cat):
+def user_selection_by_cat_and_elem(cat, elem):
     """
-    Invite user to select elems by certain category
+    Invite user to select elems by certain category, and look like element
 
-    :param cat: DB.BuiltInCategory
+    :param cat: DB
+    :param elem: DB.Element
     :return: List of elements
     :rtype: list[DB.Element]
     """
 
-    elem_filter = MySelectionFilter(cat)
+    elem_filter = MySelectionFilter(cat, elem)
     elems = uidoc.Selection.PickElementsByRectangle(elem_filter, 'select elements {}'.format(cat))
 
     logging.info('User select {}'.format(len(elems)))
