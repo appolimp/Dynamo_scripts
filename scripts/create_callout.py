@@ -471,8 +471,8 @@ def get_elems():
 if __name__ == '__main__':
     logging.basicConfig(
         filename=None, level=logging.DEBUG,
-        format='[%(asctime)s] %(levelname).1s <example>: %(message)s',
-        datefmt='%Y.%m.%d %H:%M:%S')
+        format='[%(asctime)s] %(levelname).1s: %(message)s',
+        datefmt='%M:%S')
 
     try:
         main()
