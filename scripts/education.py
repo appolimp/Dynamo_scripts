@@ -1,12 +1,12 @@
 # coding=utf-8
+import time
+start = time.time()
+
 from base.wrapper import transaction, UnwrapElement, app, Ex, uidoc, TransactionManager, clr
 from base.selection import get_selected, get_selected_by_cat
 from base.exeption import ScriptError, ElemNotFound
 from System.Collections.Generic import List
-
-
 import logging
-import time
 import os.path
 import sys
 sys.path.append(IN[5])
@@ -840,10 +840,9 @@ def filter_collector():
 
 if __name__ == '__main__':
     logging.basicConfig(
-        filename=None, level=logging.INFO,
+        filename=None, level=logging.DEBUG,
         format='[%(asctime)s] %(levelname).1s %(message)s',
         datefmt='%Y.%m.%d %H:%M:%S')
-    start = time.time()
     try:
         OUT = main()
     except ScriptError as e:
