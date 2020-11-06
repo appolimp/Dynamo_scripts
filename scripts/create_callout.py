@@ -260,24 +260,27 @@ class ElemCallout:
         self.element = element
         self.origin = None
         self.orientation = None
+        self.callout = None
+        self._need_update = True
 
     @property
     def rotation(self):
         return - self.orientation.AngleTo(DB.XYZ.BasisY) * MyPoints.calc_sign(self.orientation, DB.XYZ.BasisY)
 
     def create_callout_on_view(self, view, rotated, offset):
-        points = self._get_symbol_points()
-        points.transform_symbol_point_for_callout(self.origin, offset=offset)
+        points = self._get_up_down_points(offset)
+        self.callout = MyView.create_callout(view.Id, view.GetTypeId(), *points)
 
-        callout = MyView.create_callout(view.Id, view.GetTypeId(), *points)
+        if self._need_update:
+            self._update(symbol_point=points, rotated=rotated)
+        return self
 
+    def _update(self, symbol_point, rotated):
         if rotated:
-            callout.calc_and_rotate(self.orientation, self.origin)
+            self.callout.calc_and_rotate(self.orientation, self.origin)
 
-        borders = self.create_borders(points)
-        callout.set_crop(borders)
-
-        return callout
+        borders = self.create_borders(symbol_point)
+        self.callout.set_crop(borders)
 
     def create_borders(self, points):
         points_list = MyPoints.create_rectangle(*points)
@@ -285,6 +288,11 @@ class ElemCallout:
 
         loop = rotated_points.get_curve_loop()
         return loop
+
+    def _get_up_down_points(self, offset):
+        points = self._get_symbol_points()
+        points.transform_symbol_point_for_callout(self.origin, offset)
+        return points
 
     @abstractmethod
     def _get_symbol_points(self):
@@ -381,6 +389,24 @@ class FloorCallout(ElemCallout):
         return points
 
 
+class AnyCallout(MyCalloutBase):
+    def __init__(self, element):
+        super(AnyCallout, self).__init__(element)
+        self._need_update = False
+
+    def _get_up_down_points(self, offset):
+        points = self._get_symbol_points()
+        points.transform_symbol_point_for_callout(DB.XYZ.Zero, offset)
+
+        return points
+
+    def _get_symbol_points(self):
+        return self._get_as_bounding_box()
+
+    def _get_as_bounding_box(self):
+        view = doc.ActiveView
+        box = self.element.get_BoundingBox(view)
+        return MyPoints([box.Max, box.Min])
 class MyView:
     def __init__(self, view):
         self.view = view
