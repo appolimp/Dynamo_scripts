@@ -213,46 +213,7 @@ class MyFace:
         return area / 2
 
 
-class CreateCallout:
-    def __init__(self, element):
-        self.element = element
-
-    @classmethod
-    def to_element(cls, element, rotated, offset):
-        inst = cls(element)
-        callout = inst.create(rotated, offset)
-        return callout
-
-    def create(self, rotated, offset):
-        view = doc.ActiveView
-        valid_cat = {
-            DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_StructuralColumns).Id: ColumnCallout,
-            DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_Walls).Id: WallCallout,
-            DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_StructuralFraming).Id: BeamCallout,
-            DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_Floors).Id: FloorCallout,
-            DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_StructuralFoundation).Id: FloorCallout
-        }
-
-        elem_cat_id = self.element.Category.Id
-        if elem_cat_id in valid_cat:
-            logging.info('Get category: {}'.format(self.element.Category.Name))
-            callout = valid_cat[elem_cat_id](self.element).create_callout_on_view(view, rotated, offset)
-        else:
-            logging.error('not valid category: {}'.format(self.element.Category.Name))
-            up, down = self._get_points(offset)
-            callout = DB.ViewSection.CreateCallout(doc, view.Id, view.GetTypeId(), up, down)
-
-        return callout
-
-    def _get_points(self, offset):
-        view = doc.ActiveView
-        box = self.element.get_BoundingBox(view)
-        points = MyPoints([box.Max, box.Min])
-        points.transform_symbol_point_for_callout(DB.XYZ.Zero, offset)
-        return points
-
-
-class ElemCallout:
+class MyCalloutBase:
     __metaclass__ = ABCMeta
 
     @abstractmethod
@@ -323,7 +284,7 @@ class ElemCallout:
         raise ScriptError('Valid solid not found {}')
 
 
-class ColumnCallout(ElemCallout):
+class ColumnCallout(MyCalloutBase):
     def __init__(self, column):
         super(ColumnCallout, self).__init__(column)
 
@@ -334,7 +295,7 @@ class ColumnCallout(ElemCallout):
         return self._get_symbol_points_as_solid()
 
 
-class WallCallout(ElemCallout):
+class WallCallout(MyCalloutBase):
     def __init__(self, wall):
         super(WallCallout, self).__init__(wall)
 
@@ -362,7 +323,7 @@ class BeamCallout(WallCallout):
         return up.Y - down.Y
 
 
-class FloorCallout(ElemCallout):
+class FloorCallout(MyCalloutBase):
     def __init__(self, floor):
         super(FloorCallout, self).__init__(floor)
         self._calc_origin_and_orientation()
@@ -407,6 +368,30 @@ class AnyCallout(MyCalloutBase):
         view = doc.ActiveView
         box = self.element.get_BoundingBox(view)
         return MyPoints([box.Max, box.Min])
+
+
+class MyCalloutFactory(object):
+    VALID_CAT = {
+        DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_StructuralColumns).Id: ColumnCallout,
+        DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_Walls).Id: WallCallout,
+        DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_StructuralFraming).Id: BeamCallout,
+        DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_Floors).Id: FloorCallout,
+        DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_StructuralFoundation).Id: FloorCallout
+    }
+    FOR_ANY = AnyCallout
+
+    @classmethod
+    def get_callout_to_element(cls, element):
+        elem_cat_id = element.Category.Id
+
+        if elem_cat_id in cls.VALID_CAT:
+            logging.info('Get category: {}'.format(element.Category.Name))
+            return cls.VALID_CAT[elem_cat_id](element)
+
+        logging.error('Not valid category: {}'.format(element.Category.Name))
+        return cls.FOR_ANY(element)
+
+
 class MyView:
     def __init__(self, view):
         self.view = view
