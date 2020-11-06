@@ -457,10 +457,6 @@ def get_elems():
     return [elem]
 
 
-def set_z_to(point, z):
-    return DB.XYZ(point.X, point.Y, z)
-
-
 if __name__ == '__main__':
     logging.basicConfig(
         filename=None, level=logging.DEBUG,
