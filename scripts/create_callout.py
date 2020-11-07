@@ -228,7 +228,7 @@ class MyCalloutBase:
     def rotation(self):
         return - self.orientation.AngleTo(DB.XYZ.BasisY) * MyPoints.calc_sign(self.orientation, DB.XYZ.BasisY)
 
-    def create_callout_on_view(self, view, rotated, offset):
+    def create_callout_on_view(self, view, rotated, offset=2.0):
         points = self._get_up_down_points(offset)
         self.callout = MyView.create_callout(view.Id, view.GetTypeId(), *points)
 
@@ -451,14 +451,18 @@ class MyView:
 @transaction
 def main():
     elems = get_elems()
+    elems = get_preselected_elems_or_invite()
     OFFSET = IN[0]
     ROTATED = IN[1]
 
     for elem in elems:
-        CreateCallout.to_element(elem, rotated=ROTATED, offset=OFFSET)
+        cal = MyCalloutFactory.get_callout_to_element(elem)
+        cal.create_callout_on_view(doc.ActiveView, rotated=ROTATED, offset=OFFSET)
 
 
-def get_elems():
+def get_preselected_elems_or_invite():
+
+
     selected = get_selected(as_list=True)
     if selected:
         return selected
