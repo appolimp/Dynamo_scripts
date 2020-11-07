@@ -450,7 +450,6 @@ class MyView:
 
 @transaction
 def main():
-    elems = get_elems()
     elems = get_preselected_elems_or_invite()
     OFFSET = IN[0]
     ROTATED = IN[1]
