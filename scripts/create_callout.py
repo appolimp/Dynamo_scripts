@@ -10,14 +10,17 @@ import logging
 
 
 class MyPoints(object):
-    def __init__(self, points):
-        self.points = points
+    def __init__(self, *points):
+        if points and isinstance(points[0], (list, tuple)):
+            self.points = points[0]
+        else:
+            self.points = points
 
     @classmethod
     def create_rectangle(cls, up, down):
         left_up = DB.XYZ(down.X, up.Y, up.Z)
         right_down = DB.XYZ(up.X, down.Y, up.Z)
-        return MyPoints([down, left_up, up, right_down])
+        return MyPoints(down, left_up, up, right_down)
 
     def rot_by_point_and_angle(self, origin, angle):
         transform = DB.Transform.CreateRotationAtPoint(DB.XYZ.BasisZ, angle, origin)
@@ -71,7 +74,7 @@ class MyPoints(object):
         up = DB.XYZ(max_x, max_y, 0)
         down = DB.XYZ(min_x, min_y, 0)
 
-        return MyPoints([up, down])
+        return MyPoints(up, down)
 
     def __str__(self):
         return 'Point: ' + str(self.points)
@@ -214,21 +217,75 @@ class MyFace:
 
 
 class MyCalloutBase:
+    """
+    MetaClass for Callout. Need overrides:
+
+    - _calc_origin_and_orientation
+    - _get_symbol_points
+
+    _need_update determines whether to rotate and crop
+    """
+
     __metaclass__ = ABCMeta
+    _need_update = True
+
+    def __init__(self, element):
+        """
+        Initialization of instance
+
+        :param element: DB.Element
+        """
+
+        self.element = element
+
+        self._calc_origin_and_orientation()
+        self.callout = None
 
     @abstractmethod
-    def __init__(self, element):
-        self.element = element
+    def _calc_origin_and_orientation(self):
+        """
+        Calculate origin and orientation of element
+
+        Need be overrides in subclasses
+        """
+
         self.origin = None
         self.orientation = None
-        self.callout = None
-        self._need_update = True
 
     @property
     def rotation(self):
-        return - self.orientation.AngleTo(DB.XYZ.BasisY) * MyPoints.calc_sign(self.orientation, DB.XYZ.BasisY)
+        """
+        Angle with sing to Y axis, which the element is rotated [rad]
+
+        :return: Angle
+        :rtype: float
+        """
+
+        return self.orientation.AngleTo(DB.XYZ.BasisY) * MyPoints.calc_sign(self.orientation, DB.XYZ.BasisY)
+
+    @property
+    def _center_instance(self):
+        """
+        Define of center point instance for move symbol geometry to instance
+
+        :return: DB.XYZ
+        """
+
+        return self.origin
 
     def create_callout_on_view(self, view, rotated, offset=2.0):
+        """
+        Create callout on given view, offset and rotate if it needed
+
+        :param view: view on which the callout will be created
+        :param rotated: Is rotated view or not
+        :type rotated: bool
+        :param offset: Value of offset at geometry
+        :type offset: float
+        :return: MyCallout instance
+        :rtype: MyCalloutBase
+        """
+
         points = self._get_up_down_points(offset)
         self.callout = MyView.create_callout(view.Id, view.GetTypeId(), *points)
 
@@ -237,140 +294,259 @@ class MyCalloutBase:
         return self
 
     def _update(self, symbol_point, rotated):
+        """
+        Rotate view if is need and set correct crop border
+
+        :param symbol_point: Max and min point of instance geometry
+        :type symbol_point: MyPoints
+        :param rotated: Is rotated view or not
+        :type rotated: bool
+        """
+
         if rotated:
             self.callout.calc_and_rotate(self.orientation, self.origin)
 
-        borders = self.create_borders(symbol_point)
-        self.callout.set_crop(borders)
+        border = self.create_border(symbol_point)
+        self.callout.set_crop(border)
 
-    def create_borders(self, points):
+    def create_border(self, points):
+        """
+        Create CurveLoop rectangle by two point in main coord system and then rotate it
+
+        :param points: Max and min point
+        :type points: MyPoints
+        :return: DB.CurveLoop
+        """
+
         points_list = MyPoints.create_rectangle(*points)
-        rotated_points = points_list.rot_by_point_and_angle(self.origin, self.rotation)
+        rotated_points = points_list.rot_by_point_and_angle(self.origin, -self.rotation)
 
         loop = rotated_points.get_curve_loop()
         return loop
 
     def _get_up_down_points(self, offset):
+        """
+        Get up_right and left_down points of instance geometry with offset without rotation
+
+        :param offset: Value of offset at geometry
+        :type offset: float
+        :return: Points max and min of instance geometry
+        :rtype: MyPoints
+        """
+
         points = self._get_symbol_points()
-        points.transform_symbol_point_for_callout(self.origin, offset)
+        points.transform_symbol_point_for_callout(self._center_instance, offset)
         return points
 
     @abstractmethod
     def _get_symbol_points(self):
-        up, down = DB.XYZ(), DB.XYZ()
-        return MyPoints([up, down])
+        """
+        Get up_right and left_down points of symbol geometry
 
-    @staticmethod
-    def create_option():
-        opt = app.Create.NewGeometryOptions()
-        logging.debug('Option create')
-        return opt
+        Need be overrides in subclasses
+
+        :return: Points max and min of symbol geometry
+        :rtype: MyPoints
+        """
+
+        up, down = DB.XYZ(), DB.XYZ()
+        return MyPoints(up, down)
 
     def _get_symbol_points_as_solid(self):
-        solid = self._get_solid_by_elem(self.element.Symbol)
+        """
+        Get corner points via getting symbol solid and get it BoundingBox
+
+        :return: Points max and min of symbol solid
+        :rtype: MyPoints
+        """
+
+        solid = GeometryInRevit.get_solid_by_elem(self.element.Symbol)
         box = solid.GetBoundingBox()
-        up, down = box.Max, box.Min
-        return MyPoints([up, down])
-
-    def _get_solid_by_elem(self, geom_elem):
-        opt = self.create_option()
-        geometry = geom_elem.get_Geometry(opt)
-
-        for elem in geometry:
-            if type(elem) is DB.Solid and elem.Volume:
-                logging.debug('Get Solid')
-                return elem
-
-        raise ScriptError('Valid solid not found {}')
+        return MyPoints(box.Max, box.Min)
 
 
 class ColumnCallout(MyCalloutBase):
-    def __init__(self, column):
-        super(ColumnCallout, self).__init__(column)
+    """Class for create callout to structural column"""
 
-        self.origin = column.Location.Point
-        self.orientation = column.FacingOrientation
+    def _calc_origin_and_orientation(self):
+        """Calculate origin and orientation of element via location point and param orientation"""
+
+        self.origin = self.element.Location.Point
+        self.orientation = self.element.FacingOrientation
 
     def _get_symbol_points(self):
+        """
+        Get points of symbol geometry to create callout: max and min
+
+        Overrides method in metaclass
+
+        :return: Points max and min
+        :rtype: MyPoints
+        """
+
         return self._get_symbol_points_as_solid()
 
 
 class WallCallout(MyCalloutBase):
-    def __init__(self, wall):
-        super(WallCallout, self).__init__(wall)
+    """Class for create callout to wall"""
 
-        first, second = wall.Location.Curve.GetEndPoint(0), wall.Location.Curve.GetEndPoint(1)
+    def _calc_origin_and_orientation(self):
+        """Calculate origin and orientation of element via location curve"""
+
+        first, second = self.element.Location.Curve.GetEndPoint(0), self.element.Location.Curve.GetEndPoint(1)
         self.origin = (first + second) / 2.0
-        self.orientation = wall.Location.Curve.Direction
+        self.orientation = self.element.Location.Curve.Direction
 
     def _get_symbol_points(self):
+        """
+        Get points of symbol geometry to create callout: via curve location and width
+
+        Overrides method in metaclass
+
+        :return: Points max and min
+        :rtype: MyPoints
+        """
+
         width = self._width
         length = self.element.Location.Curve.Length
 
-        up, down = DB.XYZ(width/2.0, length/2.0, 0), DB.XYZ(-width/2.0, -length/2.0, 0)
-
-        return MyPoints([up, down])
+        up, down = DB.XYZ(width / 2.0, length / 2.0, 0), DB.XYZ(-width / 2.0, -length / 2.0, 0)
+        return MyPoints(up, down)
 
     @property
     def _width(self):
+        """
+        Return width of wall via it parameter
+
+        :return: Width
+        :rtype: float
+        """
+
         return self.element.Width
 
 
 class BeamCallout(WallCallout):
+    """Class for create callout to beam"""
+
     @property
     def _width(self):
+        """
+        Return width of beam via symbol point distance
+
+        :return: Width
+        :rtype: float
+        """
+
         up, down = self._get_symbol_points_as_solid()
         return up.Y - down.Y
 
 
 class FloorCallout(MyCalloutBase):
-    def __init__(self, floor):
-        super(FloorCallout, self).__init__(floor)
-        self._calc_origin_and_orientation()
+    """Class for create callout to floor and foundation"""
 
     def _calc_origin_and_orientation(self):
-        solid = self._get_solid_by_elem(self.element)
-        self.up_face = self._get_up_face(solid.Faces)
+        """Calculate origin and orientation of element via it upper face"""
 
+        self.up_face = self._get_up_face()
         self.origin = self.up_face.origin
         self.orientation = self.up_face.orientation
 
-        logging.debug('Origin: {:.3f}, {:.3f}, {:.3f}'.format(self.origin.X, self.origin.Y, self.origin.Z))
-        logging.debug('Orient: {:.3f}, {:.3f}, {:.3f}'.format(self.orientation.X, self.orientation.Y, self.orientation.Z))
+        logging.debug('Origin: {:.3f}, {:.3f}, {:.3f}'.format(
+            self.origin.X, self.origin.Y, self.origin.Z))
 
-    @staticmethod
-    def _get_up_face(faces):
-        for face in faces:
+        logging.debug('Orient: {:.3f}, {:.3f}, {:.3f}'.format(
+            self.orientation.X, self.orientation.Y, self.orientation.Z))
+
+    def _get_up_face(self):
+        """
+        Get upper face of element
+
+        :return: Upper face of element
+        :rtype: MyFace
+        """
+
+        solid = GeometryInRevit.get_solid_by_elem(self.element)
+
+        for face in solid.Faces:
             if face.FaceNormal.IsAlmostEqualTo(DB.XYZ.BasisZ, 0.001):
                 return MyFace(face).calc_param()
+
         raise ElemNotFound('Face up not found')
 
     def _get_symbol_points(self):
-        points = self.up_face.get_two_point()
-        return points
+        """
+        Get points of symbol geometry to create callout: via face
+
+        Overrides method in metaclass
+
+        :return: Points max and min
+        :rtype: MyPoints
+        """
+
+        return self.up_face.get_two_point()
 
 
 class AnyCallout(MyCalloutBase):
-    def __init__(self, element):
-        super(AnyCallout, self).__init__(element)
-        self._need_update = False
+    """
+    Class for create callout to anything element
 
-    def _get_up_down_points(self, offset):
-        points = self._get_symbol_points()
-        points.transform_symbol_point_for_callout(DB.XYZ.Zero, offset)
+    Get corner point via BoundingBox, so it maybe non correct in not orthogonal view
 
-        return points
+    _need_update == False, so not update rotate and crop
+    """
+
+    _need_update = False
+
+    def _calc_origin_and_orientation(self):
+        """Calculate origin and orientation of element
+
+        For any element it is unnecessary"""
+
+    @property
+    def _center_instance(self):
+        """
+        Origin of instance need for transform symbol geometry to instance
+
+        In this case it unnecessary, so it equal 0
+
+        :return: DB.XYZ.Zero
+        """
+
+        return DB.XYZ.Zero
 
     def _get_symbol_points(self):
-        return self._get_as_bounding_box()
+        """
+        Get points of symbol geometry to create callout: via BoundingBox
 
-    def _get_as_bounding_box(self):
+        In this case get points of instance geometry
+
+        Overrides method in metaclass
+
+        :return: Points max and min
+        :rtype: MyPoints
+        """
+
         view = doc.ActiveView
         box = self.element.get_BoundingBox(view)
-        return MyPoints([box.Max, box.Min])
+        return MyPoints(box.Max, box.Min)
 
 
 class MyCalloutFactory(object):
+    """
+    Factory to create callout
+
+    It check the category and selects the desired class or default
+
+    Developed categories:
+
+    - StructuralColumns
+    - Walls
+    - StructuralFraming (beams)
+    - Floors
+    - StructuralFoundation
+
+    """
+
     VALID_CAT = {
         DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_StructuralColumns).Id: ColumnCallout,
         DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_Walls).Id: WallCallout,
@@ -378,10 +554,17 @@ class MyCalloutFactory(object):
         DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_Floors).Id: FloorCallout,
         DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_StructuralFoundation).Id: FloorCallout
     }
-    FOR_ANY = AnyCallout
+    DEFAULT = AnyCallout
 
     @classmethod
     def get_callout_to_element(cls, element):
+        """
+        Get callout creator instance depending on category
+
+        :param element: DB.Element
+        :return: instance of class callout
+        """
+
         elem_cat_id = element.Category.Id
 
         if elem_cat_id in cls.VALID_CAT:
@@ -389,33 +572,120 @@ class MyCalloutFactory(object):
             return cls.VALID_CAT[elem_cat_id](element)
 
         logging.error('Not valid category: {}'.format(element.Category.Name))
-        return cls.FOR_ANY(element)
+        return cls.DEFAULT(element)
 
 
 class MyView:
+    """
+    My view class with features:
+
+    - crop view by CurveLoop
+    - rotate view about z axis by point and angle
+    - create callout
+    """
+
     def __init__(self, view):
+        """
+        Initialization of instance
+
+        :param view: DB.View
+        """
+
         self.view = view
 
     @classmethod
     def create_callout(cls, view_id, view_type_id, first_point=DB.XYZ(0, 0, 0), second_point=DB.XYZ(10, 10, 0)):
+        """
+        Create callout on view by params
+
+        :param view_id: parentViewId
+        :param view_type_id: viewFamilyTypeId
+        :param first_point: DB.XYZ
+        :param second_point: DB.XYZ
+
+        :return: Created callout
+        :rtype: MyView
+        """
+
         callout = DB.ViewSection.CreateCallout(doc, view_id, view_type_id, first_point, second_point)
         logging.info('Callout "{} #{}" was created'.format(callout.Name, callout.Id))
         return cls(callout)
 
     def set_crop(self, borders):
+        """
+        Set crop view to given borders as CurveLoop
+
+        :param borders: DB.CurveLoop
+        """
+
         view_manage = self.view.GetCropRegionShapeManager()
         view_manage.SetCropShape(borders)
-        logging.info('Set crop for view')
+        logging.info('Set crop for view: {}'.format(self.view.Name))
 
     def calc_and_rotate(self, elem_dir, origin):
-        angle = self._calc_angle(elem_dir)
+        """
+        Calculate angle of rotation between current view and UpDirection of ActiveView
+
+        And if necessary rotate view to vertical or horizontal direction
+
+        :param elem_dir: DB.XYZ, direction view to
+        :param origin: DB.XYZ, origin of view, about the center of which will rotate
+        """
+
+        angle = CoolFeature.calc_angle_to_ver_or_hor_side(elem_dir, second_vector=self.view.UpDirection)
+
         if 0.02 < abs(angle) < pi - 0.02:  # 0.02 == 1 градус
-            self._rotate_view(angle, origin)
+            self._rotate_view(-angle, origin)
 
-    def _calc_angle(self, elem_dir):
-        view_dir = self.view.UpDirection
-        angle = elem_dir.AngleTo(view_dir)
+    def _rotate_view(self, angle, point):
+        """
+        Rotate view by angle about point and z axis
 
+        :param angle: angle to rotation
+        :type angle: float
+        :param point: DB.XYZ, point about which view will rotate
+        """
+
+        crop_elem = self._find_crop_elem()
+        axis = DB.Line.CreateBound(point, point + DB.XYZ.BasisZ)
+
+        DB.ElementTransformUtils.RotateElement(doc, crop_elem, axis, angle)
+        logging.debug('View was rotated to {:.2f}'.format(angle * 180 / pi))
+
+    def _find_crop_elem(self):
+        """
+        For current view find crop element, which we can rotate or move
+
+        :return: DB.Element, crop element on view
+        """
+
+        cat_filter = DB.ElementCategoryFilter(DB.BuiltInCategory.OST_Viewers)
+        elems = self.view.GetDependentElements(cat_filter)
+        return elems[0]
+
+    def __getattr__(self, item):
+        """
+        Parameters stub
+        """
+        return getattr(self.view, item)
+
+
+class CoolFeature(object):
+
+    @staticmethod
+    def calc_angle_to_ver_or_hor_side(main_vector, second_vector):
+        """
+        Calc angle between main and second
+
+        Then transform it to main vector or it perpendicular and make angle less than 90
+
+        :param main_vector: DB.XYZ
+        :param second_vector: DB.XYZ, for example UpDirection of view
+        :return: Angle between main and second < 90
+        :rtype: float
+        """
+
+        angle = main_vector.AngleTo(second_vector)
         logging.debug('Calc first rotation angle: {:.2f}'.format(angle * 180 / pi))
 
         if pi / 4 < angle <= pi / 2:
@@ -426,30 +696,67 @@ class MyView:
             angle -= pi
 
         logging.debug('Calc change rotation angle: {:.2f}'.format(angle * 180 / pi))
-        sign_angle = MyPoints.calc_sign(view_dir, elem_dir) * angle
+        sign_angle = MyPoints.calc_sign(main_vector, second_vector) * angle
 
         logging.debug('Calc sign rotation angle: {:.2f}'.format(sign_angle * 180 / pi))
         return sign_angle
 
-    def _rotate_view(self, angle, origin):
-        crop_elem = self._find_crop_elem()
-        axis = DB.Line.CreateBound(origin, origin + DB.XYZ.BasisZ)
 
-        DB.ElementTransformUtils.RotateElement(doc, crop_elem, axis, angle)
-        logging.debug('View was rotated'.format(angle))
+class GeometryInRevit(object):
+    """
+    Work with geometry of Revit Element:
 
-    def _find_crop_elem(self):
-        cat_filter = DB.ElementCategoryFilter(DB.BuiltInCategory.OST_Viewers)
-        elems = self.view.GetDependentElements(cat_filter)
+    - Get solid of instance
+    """
 
-        return elems[0]
+    @classmethod
+    def get_solid_by_elem(cls, element):
+        """
+        Get instance solid for given element
 
-    def __getattr__(self, item):
-        return getattr(self.view, item)
+        :param element: DB.Element
+        :return: DB.Solid
+        """
+
+        option = cls.create_option()
+        geometry = element.get_Geometry(option)
+        for elem in geometry:
+            if type(elem) is DB.Solid and elem.Volume:
+                logging.debug('Get Solid')
+                return elem
+
+        raise ElemNotFound('Valid solid not found {}')
+
+    @staticmethod
+    def create_option():
+        """
+        Create user preferences for parsing of geometry
+
+        In this case View == None, get References == True
+
+        :return: DB.Options
+        """
+
+        opt = app.Create.NewGeometryOptions()
+        opt.ComputeReferences = True
+
+        logging.debug('Option create')
+        return opt
 
 
 @transaction
 def main():
+    """
+    Create Callout to selected elements
+
+    Get pre-selected elements or invite user to select it
+
+    Get input from dynamo:
+
+    - OFFSET: type(float), Offset value to callout
+    - ROTATED: type(bool), Rotate or not callout view
+    """
+
     elems = get_preselected_elems_or_invite()
     OFFSET = IN[0]
     ROTATED = IN[1]
@@ -460,7 +767,12 @@ def main():
 
 
 def get_preselected_elems_or_invite():
+    """
+    Get list pre-selected elements or invite user to select
 
+    :return: List of selected elements
+    :rtype: list
+    """
 
     selected = get_selected(as_list=True)
     if selected:
