@@ -31,6 +31,8 @@ def main():
     IS_CREATE_ALONG_2 = IN[3]
     IS_CREATE_ACROSS_1 = IN[4]
 
+    VIEW_TEMPLATE_NAME = IN[5]
+    SECTION_TEMPLATE_NAME = IN[6]
     for elem in elems:
         my_elem = MyElemFactory.get_geom_to_element(elem)
         need_update = MyElemFactory.is_valid(elem.Category)

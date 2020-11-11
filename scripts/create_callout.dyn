@@ -42,6 +42,20 @@
       "Type": "boolean",
       "Value": "true",
       "Description": "Выбор между значениями true и false."
+    },
+    {
+      "Id": "ca75a88a660740f28bb19b32f3e5084e",
+      "Name": "Tample view name for plan",
+      "Type": "string",
+      "Value": "RC_Script_callout_plan",
+      "Description": "Создание строки."
+    },
+    {
+      "Id": "748f99de6cbe469eb6166d0054c1c8b4",
+      "Name": "Tample view name for section",
+      "Type": "string",
+      "Value": "RC_Script_callout_section",
+      "Description": "Создание строки."
     }
   ],
   "Outputs": [
@@ -175,6 +189,24 @@
           "Id": "0daf480cdfc3401fab2997ca86aeb043",
           "Name": "item4",
           "Description": "Индекс элемента #4",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "337e49fedc334044bbb6178caa7850b3",
+          "Name": "item5",
+          "Description": "Индекс элемента #5",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "5928915995e54171844b93e4a06534e4",
+          "Name": "item6",
+          "Description": "Индекс элемента #6",
           "UsingDefaultValue": false,
           "Level": 2,
           "UseLevels": false,
@@ -324,6 +356,46 @@
       ],
       "Replication": "Disabled",
       "Description": "Выбор между значениями true и false."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "RC_Script_callout_plan",
+      "Id": "ca75a88a660740f28bb19b32f3e5084e",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "c0319a7e6b7143a1b52ee45b4d780e6e",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание строки."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "RC_Script_callout_section",
+      "Id": "748f99de6cbe469eb6166d0054c1c8b4",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "1ca4dd46f669447a9fc86e7be9ae428f",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание строки."
     }
   ],
   "Connectors": [
@@ -366,6 +438,16 @@
       "Start": "ff68ac2a452f46caa0ee99c2ac86bb82",
       "End": "0daf480cdfc3401fab2997ca86aeb043",
       "Id": "15525e557a444f63ad92feddeaf160f4"
+    },
+    {
+      "Start": "c0319a7e6b7143a1b52ee45b4d780e6e",
+      "End": "337e49fedc334044bbb6178caa7850b3",
+      "Id": "601d19dc84f441e0abd287c5c5fba060"
+    },
+    {
+      "Start": "1ca4dd46f669447a9fc86e7be9ae428f",
+      "End": "5928915995e54171844b93e4a06534e4",
+      "Id": "0535c36af4504593ab98a2a1563ce7a5"
     }
   ],
   "Dependencies": [],
@@ -409,8 +491,8 @@
         "IsSetAsInput": false,
         "IsSetAsOutput": false,
         "Excluded": false,
-        "X": 553.80535387587793,
-        "Y": 469.21350253838341
+        "X": 570.7374776500717,
+        "Y": 530.11141127271208
       },
       {
         "ShowGeometry": true,
@@ -419,8 +501,8 @@
         "IsSetAsInput": false,
         "IsSetAsOutput": true,
         "Excluded": false,
-        "X": 826.80535387587793,
-        "Y": 427.21350253838341
+        "X": 843.7374776500717,
+        "Y": 488.11141127271208
       },
       {
         "ShowGeometry": true,
@@ -429,8 +511,8 @@
         "IsSetAsInput": false,
         "IsSetAsOutput": false,
         "Excluded": false,
-        "X": 333.80535387587793,
-        "Y": 469.21350253838341
+        "X": 350.73747765007164,
+        "Y": 530.11141127271208
       },
       {
         "ShowGeometry": true,
@@ -439,8 +521,8 @@
         "IsSetAsInput": false,
         "IsSetAsOutput": true,
         "Excluded": false,
-        "X": 826.80535387587793,
-        "Y": 537.21350253838341
+        "X": 843.7374776500717,
+        "Y": 598.11141127271208
       },
       {
         "ShowGeometry": true,
@@ -449,8 +531,8 @@
         "IsSetAsInput": true,
         "IsSetAsOutput": false,
         "Excluded": false,
-        "X": 25.805353875877927,
-        "Y": 355.21350253838341
+        "X": 5.7374776500716393,
+        "Y": 359.11141127271208
       },
       {
         "ShowGeometry": true,
@@ -459,8 +541,8 @@
         "IsSetAsInput": true,
         "IsSetAsOutput": false,
         "Excluded": false,
-        "X": 25.805353875877927,
-        "Y": 438.21350253838341
+        "X": 5.7374776500716393,
+        "Y": 442.11141127271208
       },
       {
         "ShowGeometry": true,
@@ -469,8 +551,8 @@
         "IsSetAsInput": true,
         "IsSetAsOutput": false,
         "Excluded": false,
-        "X": 25.805353875877927,
-        "Y": 521.21350253838341
+        "X": 5.7374776500716393,
+        "Y": 525.11141127271208
       },
       {
         "ShowGeometry": true,
@@ -479,8 +561,8 @@
         "IsSetAsInput": true,
         "IsSetAsOutput": false,
         "Excluded": false,
-        "X": 25.805353875877927,
-        "Y": 604.21350253838341
+        "X": 5.7374776500716393,
+        "Y": 608.11141127271208
       },
       {
         "ShowGeometry": true,
@@ -489,8 +571,28 @@
         "IsSetAsInput": true,
         "IsSetAsOutput": false,
         "Excluded": false,
-        "X": 25.805353875877927,
-        "Y": 687.21350253838341
+        "X": 5.7374776500716393,
+        "Y": 691.11141127271208
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Tample view name for plan",
+        "Id": "ca75a88a660740f28bb19b32f3e5084e",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 5.7374776500716393,
+        "Y": 774.11141127271208
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Tample view name for section",
+        "Id": "748f99de6cbe469eb6166d0054c1c8b4",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 5.7374776500716393,
+        "Y": 857.11141127271208
       }
     ],
     "Annotations": [],
