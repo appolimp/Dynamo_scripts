@@ -11,13 +11,34 @@
       "Id": "a72155a724c74dc9bed1afc502aac92f",
       "Name": "Offset",
       "Type": "number",
-      "Value": "1.5",
+      "Value": "2",
       "NumberType": "Double",
       "Description": "Создание числа."
     },
     {
       "Id": "39cbfb5e3fe14fab8feab5000b306916",
       "Name": "Rotate",
+      "Type": "boolean",
+      "Value": "true",
+      "Description": "Выбор между значениями true и false."
+    },
+    {
+      "Id": "1a2be836f8804320b6ee0e719913b813",
+      "Name": "Along section",
+      "Type": "boolean",
+      "Value": "true",
+      "Description": "Выбор между значениями true и false."
+    },
+    {
+      "Id": "8027b16e5c2c4597ac026702941de5d8",
+      "Name": "Along section other side",
+      "Type": "boolean",
+      "Value": "false",
+      "Description": "Выбор между значениями true и false."
+    },
+    {
+      "Id": "873064f5bb1148b095b71abbe0e02138",
+      "Name": "Across section",
       "Type": "boolean",
       "Value": "true",
       "Description": "Выбор между значениями true и false."
@@ -131,6 +152,33 @@
           "Level": 2,
           "UseLevels": false,
           "KeepListStructure": false
+        },
+        {
+          "Id": "59017a8410e44eb3a8344e76377b6207",
+          "Name": "item2",
+          "Description": "Индекс элемента #2",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "48ff049acfe247c5957a84719c7061d4",
+          "Name": "item3",
+          "Description": "Индекс элемента #3",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "0daf480cdfc3401fab2997ca86aeb043",
+          "Name": "item4",
+          "Description": "Индекс элемента #4",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
         }
       ],
       "Outputs": [
@@ -180,7 +228,7 @@
       "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
       "NodeType": "NumberInputNode",
       "NumberType": "Double",
-      "InputValue": 1.5,
+      "InputValue": 2.0,
       "Id": "a72155a724c74dc9bed1afc502aac92f",
       "Inputs": [],
       "Outputs": [
@@ -206,6 +254,66 @@
       "Outputs": [
         {
           "Id": "ce1ed717feb34c82855c5692aee2d315",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выбор между значениями true и false."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "NodeType": "BooleanInputNode",
+      "InputValue": true,
+      "Id": "1a2be836f8804320b6ee0e719913b813",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "a5bb9001d959473799fe94672861e8a2",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выбор между значениями true и false."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "NodeType": "BooleanInputNode",
+      "InputValue": false,
+      "Id": "8027b16e5c2c4597ac026702941de5d8",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "70437e2dc72843cb8ac63b975390e11d",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выбор между значениями true и false."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "NodeType": "BooleanInputNode",
+      "InputValue": true,
+      "Id": "873064f5bb1148b095b71abbe0e02138",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "ff68ac2a452f46caa0ee99c2ac86bb82",
           "Name": "",
           "Description": "Boolean",
           "UsingDefaultValue": false,
@@ -243,6 +351,21 @@
       "Start": "ce1ed717feb34c82855c5692aee2d315",
       "End": "a13b61b16726450a852dfa83f904c163",
       "Id": "ee8f4196d2da47a98e8feca23ee7e15a"
+    },
+    {
+      "Start": "a5bb9001d959473799fe94672861e8a2",
+      "End": "59017a8410e44eb3a8344e76377b6207",
+      "Id": "9e12c584461642149575353559d42393"
+    },
+    {
+      "Start": "70437e2dc72843cb8ac63b975390e11d",
+      "End": "48ff049acfe247c5957a84719c7061d4",
+      "Id": "88aa5823c58f4938abb19ac89e8edc50"
+    },
+    {
+      "Start": "ff68ac2a452f46caa0ee99c2ac86bb82",
+      "End": "0daf480cdfc3401fab2997ca86aeb043",
+      "Id": "15525e557a444f63ad92feddeaf160f4"
     }
   ],
   "Dependencies": [],
@@ -286,8 +409,8 @@
         "IsSetAsInput": false,
         "IsSetAsOutput": false,
         "Excluded": false,
-        "X": 551.59298752492612,
-        "Y": 377.45166457822745
+        "X": 553.80535387587793,
+        "Y": 469.21350253838341
       },
       {
         "ShowGeometry": true,
@@ -296,8 +419,8 @@
         "IsSetAsInput": false,
         "IsSetAsOutput": true,
         "Excluded": false,
-        "X": 824.59298752492612,
-        "Y": 335.45166457822745
+        "X": 826.80535387587793,
+        "Y": 427.21350253838341
       },
       {
         "ShowGeometry": true,
@@ -306,8 +429,8 @@
         "IsSetAsInput": false,
         "IsSetAsOutput": false,
         "Excluded": false,
-        "X": 331.59298752492612,
-        "Y": 377.45166457822745
+        "X": 333.80535387587793,
+        "Y": 469.21350253838341
       },
       {
         "ShowGeometry": true,
@@ -316,8 +439,8 @@
         "IsSetAsInput": false,
         "IsSetAsOutput": true,
         "Excluded": false,
-        "X": 824.59298752492612,
-        "Y": 445.45166457822745
+        "X": 826.80535387587793,
+        "Y": 537.21350253838341
       },
       {
         "ShowGeometry": true,
@@ -326,8 +449,8 @@
         "IsSetAsInput": true,
         "IsSetAsOutput": false,
         "Excluded": false,
-        "X": 96.592987524926116,
-        "Y": 348.45166457822745
+        "X": 25.805353875877927,
+        "Y": 355.21350253838341
       },
       {
         "ShowGeometry": true,
@@ -336,8 +459,38 @@
         "IsSetAsInput": true,
         "IsSetAsOutput": false,
         "Excluded": false,
-        "X": 96.592987524926116,
-        "Y": 432.45166457822745
+        "X": 25.805353875877927,
+        "Y": 438.21350253838341
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Along section",
+        "Id": "1a2be836f8804320b6ee0e719913b813",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 25.805353875877927,
+        "Y": 521.21350253838341
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Along section other side",
+        "Id": "8027b16e5c2c4597ac026702941de5d8",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 25.805353875877927,
+        "Y": 604.21350253838341
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Across section",
+        "Id": "873064f5bb1148b095b71abbe0e02138",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 25.805353875877927,
+        "Y": 687.21350253838341
       }
     ],
     "Annotations": [],
