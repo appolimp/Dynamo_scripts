@@ -1,6 +1,6 @@
 # coding=utf-8
-from base.wrapper import transaction, doc
-from base.exeption import ScriptError
+from my_class.base.wrapper import transaction, doc
+from my_class.base.exeption import ScriptError
 
 from my_class.my_callout import MyCalloutCreator
 from my_class.my_elem import MyElemFactory
