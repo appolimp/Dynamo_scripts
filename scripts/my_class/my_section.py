@@ -1,6 +1,7 @@
 from base.wrapper import doc, DB
 from abc import ABCMeta, abstractproperty
-
+from . import my_view
+from base.wrapper import one_transaction_in_group
 import logging
 
 

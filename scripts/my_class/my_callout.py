@@ -1,5 +1,6 @@
 from my_view import MyView
 from my_geom import MyPoints
+from base.wrapper import one_transaction_in_group
 
 
 class MyCalloutCreator:
@@ -31,6 +32,7 @@ class MyCalloutCreator:
 
         :param view: view on which the callout will be created
         :param rotated: Is rotated view or not
+        :param template_view: DB.View, template view
         :type rotated: bool
         :param offset: Value of offset at geometry
         :type offset: float

@@ -3,23 +3,17 @@ import time
 
 start = time.time()
 
-from base.wrapper import transaction, UnwrapElement, app, Ex, uidoc, TransactionManager, clr
-from base.selection import get_selected, get_selected_by_cat
-from base.exeption import ScriptError, ElemNotFound
+from my_class.base.wrapper import transaction, UnwrapElement, app, Ex, uidoc, TransactionManager, clr
+from my_class.base.selection import get_selected_by_cat, get_selected
+from my_class.base.exeption import ScriptError, ElemNotFound
 from System.Collections.Generic import List
 import logging
 import os.path
 import sys
 
 sys.path.append(IN[5])
-from color_param import find_filter, set_rule
 from Autodesk.Revit.UI.Selection import ISelectionFilter, PickBoxStyle
 from rpw import revit, db, ui, doc, logger, DB, UI
-from collections import namedtuple
-from base.selection import get_selected_by_cat, get_selected
-
-from create_callout import GeometryInRevit, MyView
-from abc import ABCMeta, abstractmethod, abstractproperty
 
 
 class MySelectionFilter(ISelectionFilter):

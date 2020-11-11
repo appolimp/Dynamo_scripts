@@ -1,9 +1,10 @@
 # coding=utf-8
-from base.wrapper import DB, doc
+from base.wrapper import DB, doc, one_transaction_in_group
 from math import pi
 
 import logging
 from . import my_features
+from base import exeption as ex
 
 
 class MyView:

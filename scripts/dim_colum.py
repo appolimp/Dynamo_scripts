@@ -1,7 +1,7 @@
 # coding=utf-8
-from base.wrapper import transaction, UnwrapElement, doc, app, Ex, uidoc, TransactionManager, clr, DB, UI
-from base.selection import get_selected_by_cat
-from base.exeption import ScriptError
+from my_class.base.wrapper import transaction, UnwrapElement, doc, app, Ex, uidoc, TransactionManager, clr, DB, UI
+from my_class.base.selection import get_selected_by_cat
+from my_class.base.exeption import ScriptError
 from Autodesk.Revit.UI.Selection import ISelectionFilter
 
 import logging
