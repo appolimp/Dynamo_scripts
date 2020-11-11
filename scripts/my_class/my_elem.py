@@ -226,6 +226,9 @@ class MyAnyGeom(MyElementGeom):
     """Class for create callout to floor and foundation"""
 
     def _calc_some(self):
+        view = doc.ActiveView
+        box = self.element.get_BoundingBox(view)
+        self.up, self.down = box.Max, box.Min
         pass
 
     def _calc_origin(self):
@@ -235,13 +238,15 @@ class MyAnyGeom(MyElementGeom):
         return doc.ActiveView.UpDirection
 
     def _calc_width(self):
-        pass
+        return (self.up - self.down).X
 
     def _calc_length(self):
-        pass
+        return (self.up - self.down).Y
 
     def _calc_up_down_height(self):
-        pass
+        self.height_up = self.up.Z
+        self.height_down = self.down.Z
+        self.origin = DB.XYZ(self.origin.X, self.origin.Y, (self.height_up + self.height_down) / 2)
 
     def get_symbol_points(self):
         """
@@ -255,9 +260,7 @@ class MyAnyGeom(MyElementGeom):
         :rtype: MyPoints
         """
 
-        view = doc.ActiveView
-        box = self.element.get_BoundingBox(view)
-        return MyPoints(box.Max, box.Min)
+        return MyPoints(self.up, self.down)
 
 
 class MyElemFactory(object):
