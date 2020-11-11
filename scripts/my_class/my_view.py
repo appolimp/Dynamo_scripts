@@ -107,3 +107,63 @@ class MyView:
         for view in collector:
             if view.Id != doc.ActiveView.Id:
                 return MyView(view)
+
+
+def get_template_view_by_name(template_name):
+    collector = DB.FilteredElementCollector(doc).OfClass(DB.View)
+
+    for view in collector:
+        if view.IsTemplate and view.Name == template_name:
+            logging.debug('Template view with name "{}" was found'.format(template_name))
+            return view
+
+    raise ex.ElemNotFound('Template view with name "{}" not found'.format(template_name))
+
+
+def get_or_create_template_by_name_and_type(template_name, view_type):
+    try:
+        template_view = get_template_view_by_name(template_name)
+    except ex.ElemNotFound:
+        logging.debug('Template view with name "{}" not found'.format(template_name))
+        template_view = create_plan_template_by_name_and_type(template_name, view_type)
+
+    return template_view
+
+
+@one_transaction_in_group(msg='Create template')
+def create_plan_template_by_name_and_type(template_name, view_type):
+    any_view = get_any_view_by_type(view_type)
+    template_view = any_view.CreateViewTemplate()
+
+    parameters = template_view.GetTemplateParameterIds()
+    template_view.SetNonControlledTemplateParameterIds(parameters)
+    template_view.Name = template_name
+
+    logging.debug('Template view was created')
+    return template_view
+
+
+def get_any_view_by_type(view_type):
+    collector = DB.FilteredElementCollector(doc).OfClass(DB.View)
+
+    for view in collector:
+        if view.ViewType == view_type:
+
+            logging.debug('Get any view with type: "{}"'.format(view_type))
+            return view
+
+    raise ex.ElemNotFound('Any view with type: "{}" not found'.format(view_type))
+
+
+def set_template(view, template_view):
+    if view.IsValidViewTemplate(template_view.Id):
+        view.ViewTemplateId = template_view.Id
+        logging.debug('Template was installed: {}'.format(template_view.Name))
+    else:
+        ex.ScriptError('Its not valid template "{}" to view "{}"'.format(template_view.Name, view.Name))
+
+
+def set_visible_section_scale(view, scale=200):
+    param = view.get_Parameter(DB.BuiltInParameter.SECTION_COARSER_SCALE_PULLDOWN_METRIC)
+    param.Set(scale)
+    logging.debug('Set visible section scale: {}'.format(scale))
