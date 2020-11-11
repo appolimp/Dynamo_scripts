@@ -93,6 +93,16 @@ class MyElementGeom:
         logging.debug('Get symbol points as solid symbol')
         return MyPoints(box.Max, box.Min)
 
+    @property
+    def mark_for_sheet(self):
+        parameter_mark = self.element.get_Parameter(DB.BuiltInParameter.ALL_MODEL_MARK)
+        if parameter_mark and parameter_mark.AsString():
+            mark_value = parameter_mark.AsString()
+        else:
+            mark_value = ''
+        category_name = self.element.Category.Name
+        return category_name + '_' + mark_value
+
 
 class MyWallGeom(MyElementGeom):
 
