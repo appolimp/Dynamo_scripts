@@ -6,6 +6,8 @@ from my_class.my_callout import MyCalloutCreator
 from my_class.my_elem import MyElemFactory
 from my_class.my_section import MyAlongSectionCreator, MyAcrossSectionCreator
 from my_class.my_selection import get_preselected_elems_or_invite
+from my_class.my_view import get_or_create_template_by_name_and_type, set_template
+
 
 import logging
 
@@ -23,7 +25,6 @@ def main():
     - ROTATED: type(bool), Rotate or not callout view
     """
 
-    elems = get_preselected_elems_or_invite()
     OFFSET = IN[0]
     ROTATED = IN[1]
 
@@ -33,27 +34,48 @@ def main():
 
     VIEW_TEMPLATE_NAME = IN[5]
     SECTION_TEMPLATE_NAME = IN[6]
+
+    callout_view_template = get_or_create_template_by_name_and_type(
+        template_name=VIEW_TEMPLATE_NAME,
+        view_type=DB.ViewType.EngineeringPlan)
+
+    section_view_template = get_or_create_template_by_name_and_type(
+        template_name=SECTION_TEMPLATE_NAME,
+        view_type=DB.ViewType.Section)
+
+    elems = get_preselected_elems_or_invite()
     for elem in elems:
         my_elem = MyElemFactory.get_geom_to_element(elem)
         need_update = MyElemFactory.is_valid(elem.Category)
-        cal = MyCalloutCreator(my_elem, need_update).create_callout_on_view(
-            doc.ActiveView, rotated=ROTATED, offset=OFFSET)
 
+        callout = MyCalloutCreator(my_elem, need_update).create_callout_on_view(
+            doc.ActiveView,
+            template_view=callout_view_template,
+            rotated=ROTATED, offset=OFFSET)
+
+        sections = []
         if IS_CREATE_ALONG_1:
-            MyAlongSectionCreator(my_elem).create_section()
+            along_one = MyAlongSectionCreator(my_elem).create_section(template_view=section_view_template)
+            # along_one.Name = 'EXP_SECT_' + along_one.Name
+            sections.append(along_one)
 
         if IS_CREATE_ALONG_2:
-            MyAlongSectionCreator(my_elem).create_section(flip=True)
+            along_two = MyAlongSectionCreator(my_elem).create_section(flip=True, template_view=section_view_template)
+            # along_two.Name = 'EXP_SECT_' + along_two.Name
+            sections.append(along_two)
 
         if IS_CREATE_ACROSS_1:
-            MyAcrossSectionCreator(my_elem).create_section()
+            across_one = MyAcrossSectionCreator(my_elem).create_section(template_view=section_view_template)
+            # across_one.Name = 'EXP_SECT_' + across_one.Name
+            sections.append(across_one)
+
 
 
 if __name__ == '__main__':
     logging.basicConfig(
         filename=None, level=logging.DEBUG,
         format='[%(asctime)s] %(levelname).1s: %(message)s',
-        datefmt='%M:%S')
+        datefmt='%H:%M:%S')
 
     try:
         main()
