@@ -40,6 +40,7 @@ class MySectionCreatorBase:
         return self.element.orientation
 
     def create_section(self, section_family=None, flip=False):
+    @one_transaction_in_group
         if section_family is None:
             section_family = self._get_section_view_family_type()
 

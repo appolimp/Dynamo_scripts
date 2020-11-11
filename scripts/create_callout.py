@@ -1,5 +1,5 @@
 # coding=utf-8
-from my_class.base.wrapper import transaction, doc
+from my_class.base.wrapper import doc, DB, transaction_group
 from my_class.base.exeption import ScriptError
 
 from my_class.my_callout import MyCalloutCreator
@@ -10,7 +10,7 @@ from my_class.my_selection import get_preselected_elems_or_invite
 import logging
 
 
-@transaction
+@transaction_group(msg='Create callout')
 def main():
     """
     Create Callout to selected elements

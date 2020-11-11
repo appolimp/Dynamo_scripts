@@ -26,7 +26,8 @@ class MyCalloutCreator:
 
         self.callout = None
 
-    def create_callout_on_view(self, view, rotated, offset=2.0):
+    @one_transaction_in_group
+    def create_callout_on_view(self, view, template_view=None,  rotated=True, offset=2.0):
         """
         Create callout on given view, offset and rotate if it needed
 

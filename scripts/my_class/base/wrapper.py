@@ -58,3 +58,36 @@ def UnwrapElement(item):
         return item.InternalElement
     else:
         return item
+
+
+def transaction_group(f=None, msg="Dynamo Transaction"):
+    if f is None:
+        return lambda f: transaction_group(f, msg=msg)
+
+    def wrapped(*args, **kwargs):
+        tGroup = DB.TransactionGroup(doc, 'Place Families')
+        tGroup.Start()
+
+        r = f(*args, **kwargs)
+
+        tGroup.Commit()
+        return r
+
+    return wrapped
+
+
+def one_transaction_in_group(f=None, msg="Dynamo Transaction"):
+    if f is None:
+        return lambda f: one_transaction_in_group(f, msg=msg)
+
+    def wrapped(*args, **kwargs):
+        t = DB.Transaction(doc, msg)
+
+        t.Start()
+        r = f(*args, **kwargs)
+
+        t.Commit()
+        return r
+
+    return wrapped
+
