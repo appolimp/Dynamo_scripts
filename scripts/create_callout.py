@@ -8,6 +8,7 @@ from my_class.my_section import MyAlongSectionCreator, MyAcrossSectionCreator
 from my_class.my_selection import get_preselected_elems_or_invite
 from my_class.my_view import get_or_create_template_by_name_and_type, set_template
 
+from my_class import my_sheet
 
 import logging
 
@@ -69,6 +70,8 @@ def main():
             # across_one.Name = 'EXP_SECT_' + across_one.Name
             sections.append(across_one)
 
+        sheet = my_sheet.create_sheet_by_views(views=[callout.callout] + sections)
+        my_sheet.set_name_for_sheet(sheet, name='EXP_Elem_'+my_elem.mark_for_sheet)
 
 
 if __name__ == '__main__':
