@@ -46,6 +46,10 @@ class MyCalloutCreator:
 
         if self.need_update:
             self._update(symbol_point=points, rotated=rotated)
+
+        if template_view:
+            self.callout.ApplyViewTemplateParameters(template_view)
+
         return self
 
     def _update(self, symbol_point, rotated):
