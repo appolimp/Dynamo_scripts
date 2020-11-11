@@ -39,8 +39,8 @@ class MySectionCreatorBase:
     def direction(self):
         return self.element.orientation
 
-    def create_section(self, section_family=None, flip=False):
     @one_transaction_in_group
+    def create_section(self, template_view=None, section_family=None, flip=False):
         if section_family is None:
             section_family = self._get_section_view_family_type()
 
@@ -49,6 +49,12 @@ class MySectionCreatorBase:
         box = self.create_bounding_box(line)
         section = DB.ViewSection.CreateSection(doc, section_family.Id, box)
         logging.info('Section was created: {}'.format(section.Name))
+
+        if template_view:
+            my_view.set_template(section, template_view)
+
+        my_view.set_visible_section_scale(section, 200)
+
         return section
 
     def create_bounding_box(self, direction):
