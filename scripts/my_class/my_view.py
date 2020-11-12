@@ -52,7 +52,7 @@ class MyView:
 
         view_manage = self.view.GetCropRegionShapeManager()
         view_manage.SetCropShape(borders)
-        logging.info('Set crop for view: {}'.format(self.view.Name))
+        logging.debug('Set crop for view: {}'.format(self.view.Name))
 
     def calc_and_rotate(self, elem_dir, origin):
         """

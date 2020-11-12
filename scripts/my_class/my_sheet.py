@@ -12,9 +12,10 @@ def create_sheet(title_block_id=DB.ElementId(-1)):
     :return: New Sheet
     :rtype: DB.ViewSheet
     """
+
     sheet = DB.ViewSheet.Create(doc, title_block_id)
 
-    logging.info('Sheet was created: "{}"'.format(sheet.Name))
+    logging.debug('Sheet was created: "{}"'.format(sheet.Name))
     return sheet
 
 
@@ -36,7 +37,7 @@ def create_sheet_by_views(views):
 
     _correct_positions(viewports)
 
-    logging.debug('Sheet with {} viewports was created'.format(len(viewports)))
+    logging.info('Sheet "{}" with {} viewports was created'.format(name, len(viewports)))
     return sheet
 
 
