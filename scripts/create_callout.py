@@ -36,6 +36,8 @@ def main():
     VIEW_TEMPLATE_NAME = IN[5]
     SECTION_TEMPLATE_NAME = IN[6]
 
+    IS_CREATE_SHEET = IN[7]
+
     callout_view_template = get_or_create_template_by_name_and_type(
         template_name=VIEW_TEMPLATE_NAME,
         view_type=DB.ViewType.EngineeringPlan)
@@ -70,8 +72,10 @@ def main():
             # across_one.Name = 'EXP_SECT_' + across_one.Name
             sections.append(across_one)
 
-        sheet = my_sheet.create_sheet_by_views(views=[callout.callout] + sections)
-        my_sheet.set_name_for_sheet(sheet, name='EXP_Elem_'+my_elem.mark_for_sheet)
+        if IS_CREATE_SHEET:
+            sheet = my_sheet.create_sheet_by_views(
+                views=[callout.callout] + sections,
+                name='EXP_Elem_'+my_elem.mark_for_sheet)
 
 
 if __name__ == '__main__':
