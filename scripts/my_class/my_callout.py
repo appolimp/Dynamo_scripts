@@ -1,6 +1,6 @@
 from my_view import MyView
 from my_geom import MyPoints
-from base.wrapper import one_transaction_in_group
+from base.wrapper import Transaction
 
 
 class MyCalloutCreator:
@@ -26,7 +26,7 @@ class MyCalloutCreator:
 
         self.callout = None
 
-    @one_transaction_in_group
+    @Transaction.ensure('Create callout on view')
     def create_callout_on_view(self, view, template_view=None,  rotated=True, offset=2.0):
         """
         Create callout on given view, offset and rotate if it needed

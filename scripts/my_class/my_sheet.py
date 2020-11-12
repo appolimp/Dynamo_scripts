@@ -1,8 +1,8 @@
-from base.wrapper import doc, DB, one_transaction_in_group
+from base.wrapper import doc, DB, Transaction
 import logging
 
 
-@one_transaction_in_group
+@Transaction.ensure('Create sheet')
 def create_sheet(title_block_id=DB.ElementId(-1)):
     """
     Create new sheet on current document by TitleBlock
@@ -40,7 +40,7 @@ def create_sheet_by_views(views):
     return sheet
 
 
-@one_transaction_in_group
+@Transaction.ensure('Correct position on viewports')
 def _correct_positions(viewports, start=DB.XYZ(0, 0, 0)):
     last_right = start
     for viewport in viewports:
@@ -61,7 +61,7 @@ def _correct_position_right(viewport, last_right_up, shift=0.1):
     return
 
 
-@one_transaction_in_group
+@Transaction.ensure('Set sheet name')
 def set_name_for_sheet(sheet, name):
     sheet.Name = name
 

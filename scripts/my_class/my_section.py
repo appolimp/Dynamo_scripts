@@ -1,7 +1,7 @@
 from base.wrapper import doc, DB
 from abc import ABCMeta, abstractproperty
 from . import my_view
-from base.wrapper import one_transaction_in_group
+from base.wrapper import Transaction
 import logging
 
 
@@ -39,7 +39,7 @@ class MySectionCreatorBase:
     def direction(self):
         return self.element.orientation
 
-    @one_transaction_in_group
+    @Transaction.ensure('Create section')
     def create_section(self, template_view=None, section_family=None, flip=False):
         if section_family is None:
             section_family = self._get_section_view_family_type()

@@ -28,6 +28,7 @@ uidoc = uiapp.ActiveUIDocument
 import sys
 
 sys.path.append(r"C:\Program Files (x86)\IronPython 2.7\Lib")
+import logging
 
 
 def transaction(f=None, doc=doc, msg="Dynamo Transaction"):
@@ -91,3 +92,49 @@ def one_transaction_in_group(f=None, msg="Dynamo Transaction"):
 
     return wrapped
 
+
+class Transaction:
+    def __init__(self, msg=None):
+        self.msg = msg or 'Dynamo Transaction'
+        self.transaction = DB.Transaction(doc, msg)
+
+    def __enter__(self):
+        self.transaction.Start()
+
+    def __exit__(self, exception, exception_msg, tb):
+        if exception:
+            self.transaction.RollBack()
+            logging.error('Error in Transaction Context: has rolled back.')
+            # traceback.print_tb(tb)
+            # raise exception # Let exception through
+        else:
+            try:
+                self.transaction.Commit()
+            except Exception as exc:
+                self.transaction.RollBack()
+                logging.error('Error in Transaction Commit: has rolled back.')
+                logging.error(exc)
+                raise
+
+    @staticmethod
+    def ensure(name):
+        """ Transaction Manager Decorator
+
+        Decorate any function with ``@Transaction.ensure('Transaction Name')``
+        and the function will run within a Transaction Context.
+
+        Args:
+            name (str): Name of the Transaction
+
+        """
+
+        from functools import wraps
+
+        def wrap(f):
+            @wraps(f)
+            def wrapped_f(*args, **kwargs):
+                with Transaction(name):
+                    return_value = f(*args, **kwargs)
+                return return_value
+            return wrapped_f
+        return wrap

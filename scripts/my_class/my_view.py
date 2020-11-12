@@ -1,5 +1,5 @@
 # coding=utf-8
-from base.wrapper import DB, doc, one_transaction_in_group
+from base.wrapper import DB, doc, Transaction
 from math import pi
 
 import logging
@@ -130,7 +130,7 @@ def get_or_create_template_by_name_and_type(template_name, view_type):
     return template_view
 
 
-@one_transaction_in_group(msg='Create template')
+@Transaction.ensure('Create template')
 def create_plan_template_by_name_and_type(template_name, view_type):
     any_view = get_any_view_by_type(view_type)
     template_view = any_view.CreateViewTemplate()
