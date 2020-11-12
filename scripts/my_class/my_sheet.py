@@ -19,7 +19,6 @@ def create_sheet(title_block_id=DB.ElementId(-1)):
     return sheet
 
 
-@one_transaction_in_group
 def add_view_to_sheet(view, sheet, position=DB.XYZ(0, 0, 0)):
     view_port = DB.Viewport.Create(doc, sheet.Id, view.Id, position)
 
@@ -27,13 +26,16 @@ def add_view_to_sheet(view, sheet, position=DB.XYZ(0, 0, 0)):
     return view_port
 
 
-def create_sheet_by_views(views):
+def create_sheet_by_views(views, name):
     sheet = create_sheet()
+    set_name_for_sheet(sheet, name)
+
     viewports = []
 
-    for view in views:
-        viewport = add_view_to_sheet(view, sheet)
-        viewports.append(viewport)
+    with Transaction('Add view port'):
+        for view in views:
+            viewport = add_view_to_sheet(view, sheet)
+            viewports.append(viewport)
 
     _correct_positions(viewports)
 
