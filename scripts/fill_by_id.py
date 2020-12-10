@@ -5,6 +5,7 @@ import logging
 import os
 
 
+@transaction_group(msg='Fill by id')
 def main():
     PARAM_NAME = IN[0]
     PATH = IN[1]
@@ -46,14 +47,14 @@ def convert_to_valid_data(f):
         if valid_values:
             data.append(valid_values)
         else:
-            logging.error('Line is not valid: "{}"'.format(line))
+            logging.error('Line is not valid: "{}"'.format(line.strip()))
 
     logging.debug('Find {} valid values, and {} error'.format(len(data), errors))
     return data
 
 
 def get_valid_values(text):
-    left, par, right = text.partition(', ')
+    left, par, right = text.partition(';')
     if left and right:
         return left, right
 
@@ -88,9 +89,10 @@ def get_param_elem_by_name(elem, param_name):
         logging.error('Get some param with name: {}'.format(param_name))
         return params[0]
     else:
-        raise ElemNotFound('Param with name "{}" not found'.format(param_name))
+        raise ElemNotFound('Id #{}. Param with name "{}" not found'.format(elem.Id, param_name))
 
 
+@Transaction.ensure('Fill param value')
 def set_value_param(param, value):
     if param.StorageType == DB.StorageType.String:
         param.Set(str(value))

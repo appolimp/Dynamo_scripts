@@ -420,7 +420,7 @@
       },
       {
         "Id": "02ef6d0c1d6549ee959622568978d1be",
-        "Title": "1. Parameter name to fill\r\n2. Path to file with data\r\nData must be separeted by \", \"",
+        "Title": "1. Parameter name to fill\r\n2. Path to file with data\r\nData must be separeted by \";\"",
         "Nodes": [],
         "Left": 343.64525083545328,
         "Top": 106.81246786539313,
