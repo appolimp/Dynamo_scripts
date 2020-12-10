@@ -8,3 +8,6 @@ class SheetsNotSelected(ScriptError):
 
 class ElemNotFound(ScriptError):
     pass
+
+class NotValidValue(ScriptError):
+    pass
