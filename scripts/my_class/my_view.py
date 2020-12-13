@@ -1,10 +1,13 @@
 # coding=utf-8
 from base.wrapper import DB, doc, Transaction
+from base.exeption import ElemNotFound
 from math import pi
 
 import logging
 from . import my_features
 from base import exeption as ex
+
+from . import my_axles
 
 
 class MyView:
@@ -167,3 +170,118 @@ def set_visible_section_scale(view, scale=200):
     param = view.get_Parameter(DB.BuiltInParameter.SECTION_COARSER_SCALE_PULLDOWN_METRIC)
     param.Set(scale)
     logging.debug('Set visible section scale: {}'.format(scale))
+
+
+def get_center_point_of_view(view):
+    logging.debug('View #{}. View type is "{}"'.format(view.Id, view.ViewType))
+
+    if view.ViewType in [DB.ViewType.Section, DB.ViewType.Elevation]:
+        center_point = get_center_point_of_view_section(view)
+
+    elif view.ViewType in [DB.ViewType.EngineeringPlan, DB.ViewType.FloorPlan]:
+        center_point = get_center_point_of_plan(view)
+
+    else:
+        raise NotImplementedError('View #{}. Type "{}" is NotImplemented'.format(view.Id, view.ViewType))
+
+    logging.debug('View #{}. Get center point ({:.1f}, {:.1f}, {:.1f}), at elevation {:.2f} m'.format(
+        view.Id, center_point.X, center_point.Y, center_point.Z, center_point.Z * 0.3048))
+    return center_point
+
+
+def get_center_point_of_view_section(section_view):
+    box = section_view.CropBox
+    center_box = (box.Max + box.Min) / 2
+
+    center_point = section_view.Origin + DB.XYZ(center_box.X, 0, center_box.Y)
+
+    return center_point
+
+
+def get_center_point_of_plan(plan_view):
+    box = plan_view.CropBox
+    center_box = (box.Max + box.Min) / 2
+
+    cut_level = plan_view.GenLevel
+    cut_level_elevation = cut_level.Elevation
+
+    plan_range = plan_view.GetViewRange()
+    cut_offset = plan_range.GetOffset(DB.PlanViewPlane.CutPlane)
+
+    center_point = DB.XYZ(plan_view.Origin.X + center_box.X,
+                          plan_view.Origin.Y + center_box.Y,
+                          cut_level_elevation + cut_offset)
+
+    return center_point
+
+
+def duplicate_and_move_up(view, up_value):
+    new_view = duplicate_view(view)
+    move_view(new_view, up_value)
+
+    duplicate_annotation(view, new_view, up_value)
+    correct_axles(view, new_view, up_value)
+
+
+def duplicate_view(view, option=DB.ViewDuplicateOption.Duplicate):
+    new_view_id = view.Duplicate(option)
+    if new_view_id == DB.ElementId.InvalidElementId:
+        raise ElemNotFound('View #{}. Cant duplicate view because its invalid'.format(view.Id))
+
+    new_view = doc.GetElement(new_view_id)
+
+    logging.debug('View #{}. Duplicate view to #{}'.format(view.Id, new_view.Id))
+    return new_view
+
+
+def move_view(view, up_value):
+    box = view.CropBox
+
+    vector = DB.XYZ(0, up_value, 0)
+
+    box.Min = box.Min + vector
+    box.Max = box.Max + vector
+
+    view.CropBox = box
+    logging.debug('View #{}. Was moved to {:.3f} m'.format(view.Id, up_value*304.8))
+
+
+def duplicate_annotation(view, new_view, up_value):
+    data = get_depends_elems_id_by_class(view, DB.FamilyInstance)
+    new_data = copy_elem_on_view_to_new_view_with_up_move(data, view, new_view, up_value)
+
+    return new_data
+
+
+def correct_axles(view, new_view, up_value):
+    axles = get_elem_on_view_by_category(view, DB.BuiltInCategory.OST_Grids)
+
+    for axis in axles:
+        my_axles.move_axles_crop_from_view_to_view_by_up_value(axis, view, new_view, up_value)
+
+    logging.debug('View #{}. {} Axles crop was moved up to {:.3f} m from view#{}'.format(
+        new_view.Id, len(axles), up_value * 0.3048, view.Id))
+
+
+def get_elem_on_view_by_category(view, category):
+    elements = DB.FilteredElementCollector(doc, view.Id).OfCategory(category).ToElements()
+
+    logging.debug('View #{}. Get {} elems on view by category: {}'.format(view.Id, len(elements), category))
+    return elements
+
+
+def get_depends_elems_id_by_class(view, my_class):
+    my_filter = DB.ElementClassFilter(my_class)
+    elems_id = view.GetDependentElements(my_filter)
+
+    logging.debug('View #{}. Get {} id elems by class: {}'.format(view.Id, len(elems_id), my_class))
+    return elems_id
+
+
+def copy_elem_on_view_to_new_view_with_up_move(elems_id, view, new_view, up_value=0, option=None):
+    transform = DB.Transform.CreateTranslation(DB.XYZ(0, 0, up_value)) if up_value else None
+
+    new_ids = DB.ElementTransformUtils.CopyElements(view, elems_id, new_view, transform, option)
+
+    logging.debug('View #{}. Copy {} elems from view #{}'.format(new_view.Id, len(new_ids), view.Id))
+    return new_ids
