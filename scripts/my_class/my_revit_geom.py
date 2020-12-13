@@ -82,3 +82,29 @@ class GeometryInRevit(object):
 
         logging.debug('Get face by vector: {}, face origin == {}'.format(vector, my_face.Origin))
         return my_face
+
+    @classmethod
+    def get_geom_symbol_by_elem(cls, element):
+        """
+        Get instance solid for given element
+
+        :param element: DB.Element
+        :return: DB.Solid
+        """
+
+        option = cls.create_option()
+        geometry = element.get_Geometry(option)
+
+        return cls._get_geom_symbol_by_geom(geometry)
+
+    @classmethod
+    def _get_geom_symbol_by_geom(cls, geometry):
+        for elem in geometry:
+            if type(elem) is DB.GeometryInstance:
+                logging.debug('Get GeometryInstance')
+                symbol_geom = elem.GetSymbolGeometry()
+
+                logging.debug('Get symbol Geometry')
+                return symbol_geom
+
+        raise ElemNotFound('Geometry dont have GeometryInstance')
