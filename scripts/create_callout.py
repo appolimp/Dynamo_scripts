@@ -38,7 +38,7 @@ def main():
 
     IS_CREATE_SHEET = IN[7]
 
-    callout_view_template = get_or_create_template_by_name_and_type(
+    callouts_view_template = get_or_create_template_by_name_and_type(
         template_name=VIEW_TEMPLATE_NAME,
         view_type=DB.ViewType.EngineeringPlan)
 
@@ -53,7 +53,7 @@ def main():
 
         callout = MyCalloutCreator(my_elem, need_update).create_callout_on_view(
             doc.ActiveView,
-            template_view=callout_view_template,
+            template_view=callouts_view_template,
             rotated=ROTATED, offset=OFFSET)
 
         sections = []
