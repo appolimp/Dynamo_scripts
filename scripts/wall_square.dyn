@@ -1,0 +1,342 @@
+{
+  "Uuid": "55a2ecaa-b10c-4ccc-9409-fa684dbe34d1",
+  "IsCustomNode": false,
+  "Description": null,
+  "Name": "wall_square",
+  "ElementResolver": {
+    "ResolutionMap": {
+      "DesignScript.Builtin.Dictionary": {
+        "Key": "DesignScript.Builtin.Dictionary",
+        "Value": "DesignScriptBuiltin.dll"
+      }
+    }
+  },
+  "Inputs": [
+    {
+      "Id": "a4f651f8239a4a4ea5915d703db724db",
+      "Name": "String",
+      "Type": "string",
+      "Value": "Логика:\r\n\r\n    - Получаем выбранные пользователем помещения или выбрать все в проекте\r\n    - Получаем выбранные пользователем стены или выбрать все в проекте. Может быть долго, если их ОЧЕНЬ много\r\n    - Заполняем словарь. По помещениям и материалам в них\r\n    - Заполняем соответствующие параметры в помещении\r\n\r\n    Работает только с теми материалами стен, которые задал пользователь во входных данных\r\n\r\nВходные данные - Словарь пар:\r\nИмя материала стены - Имя параметра помещения",
+      "Description": "Создание строки."
+    }
+  ],
+  "Outputs": [
+    {
+      "Id": "80c6df4367474546a4be46cf073a10d9",
+      "Name": "Return",
+      "Type": "unknown",
+      "InitialValue": "",
+      "Description": "Визуализация входного элемента узла."
+    }
+  ],
+  "Nodes": [
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "NodeType": "ExtensionNode",
+      "Id": "80c6df4367474546a4be46cf073a10d9",
+      "Inputs": [
+        {
+          "Id": "9881ec4a08c046ebbf493749b7aa5b36",
+          "Name": "",
+          "Description": "Узел для оценки.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "3a7712c84f68430d93f6dc94f097b144",
+          "Name": "",
+          "Description": "Просмотр содержимого.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Визуализация входного элемента узла."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "# coding=utf-8\r\n# #################### Стандартный импорт ###################################\r\n\r\nimport clr\r\n\r\nclr.AddReference('RevitAPI')\r\nclr.AddReference(\"RevitServices\")\r\nclr.AddReference(\"RevitNodes\")\r\n\r\nimport Autodesk.Revit.DB as DB\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\nuidoc = DocumentManager.Instance.CurrentUIApplication.ActiveUIDocument\r\n\r\n# #################### Константы ############################################\r\n\r\n# Связь материала стен и параметра в помещении\r\nWALL_MATERIAL_TO_ROOM_PARAM = IN[0]\r\n\r\n# Имена пользовательский параметров. Лучше заменить на GUID\r\nWALL_PARAM_ABOUT_ROOM = 'Помещение'\r\nWALL_TYPE_PARAM_FINISHING = 'Отделка'\r\n\r\n\r\n# #################### Основная логика ######################################\r\n\r\n\r\ndef main():\r\n    \"\"\"\r\n    Логика:\r\n\r\n    - Получаем выбранные пользователем помещения или выбрать все в проекте\r\n    - Получаем выбранные пользователем стены или выбрать все в проекте. Может быть долго, если их ОЧЕНЬ много\r\n    - Заполняем словарь. По помещениям и материалам в них\r\n    - Заполняем соответствующие параметры в помещении\r\n\r\n    Работает только с теми материалами стен, которые задал пользователь во входных данных\r\n\r\n    \"\"\"\r\n\r\n    # Получение помещений и стен\r\n    rooms = get_selected_or_all(DB.BuiltInCategory.OST_Rooms)\r\n    walls = get_selected_or_all(DB.BuiltInCategory.OST_Walls)\r\n\r\n    # Обработка стен\r\n    rooms_number_and_material = get_material_for_room(rooms, walls)\r\n\r\n    # Заполнение параметров в помещении\r\n    count_room, count_material = fill_parameters(rooms, rooms_number_and_material)\r\n\r\n    return ('Успех.\\n'\r\n            'Получено #{} помещений и #{} стен\\n'.format(len(rooms), len(walls)) +\r\n            'Обработано: #{} помещений и #{} материалов'.format(count_room, count_material))\r\n\r\n\r\ndef get_material_for_room(rooms, all_wall):\r\n    \"\"\"\r\n    Заполнить словарь по номерам помещений словарем по материалам в этом помещении\r\n\r\n    Учитывает только стены с параметром \"Отделка\" == \"да\"\r\n\r\n    А так же только те, значение параметра \"Помещения\" которых есть в выбранных пользователем\r\n    То есть, если пользователь не выбрал помещение с номером \"5\", эти стены будут игнорироваться\r\n\r\n    :param rooms: Список помещений\r\n    :type rooms: list[DB.Room]\r\n    :param all_wall: Список стен\r\n    :type all_wall: list[DB.Wall]\r\n    :return: Словарь номеров помещений и материалов со значениями\r\n    :rtype: dict[str, dict[str, float]]\r\n    \"\"\"\r\n\r\n    rooms_number_and_material = {room.Number: {} for room in rooms}\r\n\r\n    for wall in all_wall:\r\n\r\n        # Проверка является ли материал отделкой\r\n        wall_type_is_finishing = wall.WallType.LookupParameter(WALL_TYPE_PARAM_FINISHING).AsString()\r\n        if wall_type_is_finishing == 'да':\r\n\r\n            # Получить значение помещения\r\n            wall_param_room = wall.LookupParameter(WALL_PARAM_ABOUT_ROOM).AsString()\r\n\r\n            # И если оно имеет значение и номер есть в rooms_number_and_material продолжит\r\n            if wall_param_room and wall_param_room in rooms_number_and_material:\r\n                room_material = rooms_number_and_material[wall_param_room]\r\n\r\n                # Получение имени материала структуры\r\n                wall_structural_material_id = wall.WallType.get_Parameter(\r\n                    DB.BuiltInParameter.STRUCTURAL_MATERIAL_PARAM).AsElementId()\r\n                wall_structural_material_name = doc.GetElement(wall_structural_material_id).Name\r\n\r\n                # Получение площади стены\r\n                wall_area = wall.get_Parameter(DB.BuiltInParameter.HOST_AREA_COMPUTED).AsDouble()\r\n\r\n                # Заполнение словаря материалов в помещении. Материал: Значение\r\n                room_material[wall_structural_material_name] = room_material.get(\r\n                    wall_structural_material_name, 0) + wall_area\r\n\r\n    return rooms_number_and_material\r\n\r\n\r\ndef fill_parameters(rooms, rooms_number_and_material):\r\n    \"\"\"\r\n    Заполнить параметры помещения, если для них вычислены значения\r\n\r\n    :param rooms: Список помещений, для заполнения параметра\r\n    :type rooms: list[DB.Room]\r\n    :param rooms_number_and_material: Словарь номеров помещений и материалов со значениями\r\n    :type rooms_number_and_material: dict[str, dict[str, float]]\r\n    \"\"\"\r\n\r\n    TransactionManager.Instance.EnsureInTransaction(doc)  # Транзакция вкл\r\n\r\n    rooms_processed = set()  # Счетчик для статистики\r\n    materials_processed = set()  # Счетчик для статистики\r\n\r\n    for room in rooms:\r\n        if room.Number in rooms_number_and_material:  # Если были стены для этого помещения\r\n\r\n            materials = rooms_number_and_material[room.Number]  # Получить словарь его материалов\r\n            for material in materials:\r\n\r\n                # Если есть соответствие между материалом стен и параметром в помещении во входных данных\r\n                if material in WALL_MATERIAL_TO_ROOM_PARAM:\r\n                    param_name = WALL_MATERIAL_TO_ROOM_PARAM[material]\r\n                    param = room.LookupParameter(param_name)\r\n                    param.Set(materials[material])  # Заполнение параметра\r\n\r\n                    rooms_processed.add(room)  # Для статистики\r\n                    materials_processed.add(material)  # Для статистики\r\n\r\n    TransactionManager.Instance.TransactionTaskDone()  # Транзакция выкл\r\n    return len(rooms_processed), len(materials_processed)  # Для статистики\r\n\r\n\r\ndef get_selected_or_all(find_cat):\r\n    \"\"\"\r\n    Получить выбранные пользователем или все элементы в проекте определенного класса\r\n\r\n    :param find_cat: Категории элемента\r\n    :return: Список элементов определенной категории\r\n    :rtype: list\r\n    \"\"\"\r\n\r\n    def get_selected_by_cat(cat):\r\n        \"\"\"Получить элементы в пользовательском выборе определенной категории\"\"\"\r\n        selected_elements = [doc.GetElement(e_id) for e_id in uidoc.Selection.GetElementIds()]\r\n        return [elem for elem in selected_elements if elem.Category.Id == DB.Category.GetCategory(doc, cat).Id]\r\n\r\n    preselected = get_selected_by_cat(find_cat)\r\n    if preselected:\r\n        return preselected\r\n\r\n    # Получить все элементы в проекте заданной категории\r\n    collector = DB.FilteredElementCollector(doc).OfCategory(find_cat).WhereElementIsNotElementType()\r\n    return list(collector)\r\n\r\n\r\n# #################### Точка входа ##########################################\r\n\r\n\r\nif __name__ == '<module>':\r\n    OUT = main()\r\n",
+      "VariableInputPorts": true,
+      "Id": "1ea081fce2954c538f649cb253550389",
+      "Inputs": [
+        {
+          "Id": "4f9fd000647f45ca84ebf6c0701f8cf2",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "163381683a194e0bae35be78c160cf3a",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "2d832ed877604ff8a50c11ed80986dce",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выполнение встроенного сценария IronPython."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "NodeType": "BooleanInputNode",
+      "InputValue": true,
+      "Id": "39d6b0d7652346ffb2f6768da30ba4e8",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "df409dd4dee44331b709a91ab92221fd",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выбор между значениями true и false."
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CodeBlockNodeModel, DynamoCore",
+      "NodeType": "CodeBlockNode",
+      "Code": "// Словарь\n// Имя материала стены : Имя параметра у помещения\n{\"Кирпич, обычный\": \"Кирпич\",\n\"Штукатурка\": \"Штукатурка\",\n\"Синий, сплошной\": \"Краска\"};",
+      "Id": "1f0b857f584a458ba7c06b85cc17c602",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "88f0f9d729de4643a4a782705e61f3eb",
+          "Name": "",
+          "Description": "Значение выражения в строке 3",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Обеспечивает возможность непосредственного авторства кода DesignScript"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "Логика:\r\n\r\n    - Получаем выбранные пользователем помещения или выбрать все в проекте\r\n    - Получаем выбранные пользователем стены или выбрать все в проекте. Может быть долго, если их ОЧЕНЬ много\r\n    - Заполняем словарь. По помещениям и материалам в них\r\n    - Заполняем соответствующие параметры в помещении\r\n\r\n    Работает только с теми материалами стен, которые задал пользователь во входных данных\r\n\r\nВходные данные - Словарь пар:\r\nИмя материала стены - Имя параметра помещения",
+      "Id": "a4f651f8239a4a4ea5915d703db724db",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "7ebe2d74328243d2aa7f6ad32e00ecb2",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание строки."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "2d832ed877604ff8a50c11ed80986dce",
+      "End": "9881ec4a08c046ebbf493749b7aa5b36",
+      "Id": "3fb7415373cc4f7295411947592684c0"
+    },
+    {
+      "Start": "df409dd4dee44331b709a91ab92221fd",
+      "End": "163381683a194e0bae35be78c160cf3a",
+      "Id": "f62aec32caf74921b204fb4e5f8124fc"
+    },
+    {
+      "Start": "88f0f9d729de4643a4a782705e61f3eb",
+      "End": "4f9fd000647f45ca84ebf6c0701f8cf2",
+      "Id": "04a8736bbc5844cb8bb88e0389e6dffd"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.6.1.8786",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Фоновый просмотр",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "NodeViews": [
+      {
+        "ShowGeometry": true,
+        "Name": "Return",
+        "Id": "80c6df4367474546a4be46cf073a10d9",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": true,
+        "Excluded": false,
+        "X": 678.118170127658,
+        "Y": 1040.0833948370221
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "PS",
+        "Id": "1ea081fce2954c538f649cb253550389",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 434.118170127658,
+        "Y": 1040.0833948370221
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Refresh",
+        "Id": "39d6b0d7652346ffb2f6768da30ba4e8",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 199.118170127658,
+        "Y": 1066.0833948370221
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Словарь. Имя материала стены: имя параметра у помещения",
+        "Id": "1f0b857f584a458ba7c06b85cc17c602",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -386.881829872342,
+        "Y": 912.1500615036889
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "String",
+        "Id": "a4f651f8239a4a4ea5915d703db724db",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -402.68153487083953,
+        "Y": 367.69035138087304
+      }
+    ],
+    "Annotations": [
+      {
+        "Id": "59e5a935909e4b3cad41ce61bee1f523",
+        "Title": "INPUT",
+        "Nodes": [
+          "1f0b857f584a458ba7c06b85cc17c602",
+          "31ebe1093f6d435ba2d37bd2619e3a81"
+        ],
+        "Left": -396.881829872342,
+        "Top": 859.1500615036889,
+        "Width": 486.0,
+        "Height": 331.16980864896595,
+        "FontSize": 36.0,
+        "InitialTop": 912.1500615036889,
+        "InitialHeight": 316.16980864896595,
+        "TextblockHeight": 43.0,
+        "Background": "#FFFFC999"
+      },
+      {
+        "Id": "7bc063364ceb4e54be5dcaaf0cd9ad3c",
+        "Title": "            Magic",
+        "Nodes": [
+          "1ea081fce2954c538f649cb253550389",
+          "39d6b0d7652346ffb2f6768da30ba4e8"
+        ],
+        "Left": 189.118170127658,
+        "Top": 987.08339483702207,
+        "Width": 379.0,
+        "Height": 172.0,
+        "FontSize": 36.0,
+        "InitialTop": 1040.0833948370221,
+        "InitialHeight": 211.5934455640288,
+        "TextblockHeight": 43.0,
+        "Background": "#FFA4E1FF"
+      },
+      {
+        "Id": "13b6bf598cc447e3bcaf499818d9727e",
+        "Title": "Log",
+        "Nodes": [
+          "80c6df4367474546a4be46cf073a10d9"
+        ],
+        "Left": 668.118170127658,
+        "Top": 987.08339483702207,
+        "Width": 120.0,
+        "Height": 147.0,
+        "FontSize": 36.0,
+        "InitialTop": 1040.0833948370221,
+        "InitialHeight": 145.0,
+        "TextblockHeight": 43.0,
+        "Background": "#FFD4B6DB"
+      },
+      {
+        "Id": "0318d037ab834454a4c315bc1793a5a5",
+        "Title": "Описание",
+        "Nodes": [
+          "a4f651f8239a4a4ea5915d703db724db"
+        ],
+        "Left": -412.68153487083953,
+        "Top": 314.69035138087304,
+        "Width": 239.0,
+        "Height": 512.0,
+        "FontSize": 36.0,
+        "InitialTop": 367.69035138087304,
+        "InitialHeight": 423.0,
+        "TextblockHeight": 43.0,
+        "Background": "#FFFFB8D8"
+      },
+      {
+        "Id": "31ebe1093f6d435ba2d37bd2619e3a81",
+        "Title": "А так же выбранные в проекте стены и помещения\r\n\r\nЕсли выбраны - работает только с ними, \r\nЕсли нет - работает со ВСЕМИ в проекте",
+        "Nodes": [],
+        "Left": -382.34559981008294,
+        "Top": 1088.3198701526549,
+        "Width": 0.0,
+        "Height": 0.0,
+        "FontSize": 36.0,
+        "InitialTop": 0.0,
+        "InitialHeight": 0.0,
+        "TextblockHeight": 0.0,
+        "Background": "#FFC1D676"
+      }
+    ],
+    "X": 744.89378810990661,
+    "Y": -236.31371556975517,
+    "Zoom": 0.916838962510997
+  }
+}
