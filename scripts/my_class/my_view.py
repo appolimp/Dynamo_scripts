@@ -4,10 +4,8 @@ from base.exeption import ElemNotFound
 from math import pi
 
 import logging
-from . import my_features
+from . import my_features, my_axles
 from base import exeption as ex
-
-from . import my_axles
 
 
 class MyView:
@@ -222,6 +220,10 @@ def duplicate_and_move_up(view, up_value):
     duplicate_annotation(view, new_view, up_value)
     correct_axles(view, new_view, up_value)
 
+    logging.debug('View #{}. View was copied from view #{} and move up to {:.3f} m'.format(
+        new_view.Id, view.Id, up_value * 0.3048))
+    return new_view
+
 
 def duplicate_view(view, option=DB.ViewDuplicateOption.Duplicate):
     new_view_id = view.Duplicate(option)
@@ -247,7 +249,7 @@ def move_view(view, up_value):
 
 
 def duplicate_annotation(view, new_view, up_value):
-    data = get_depends_elems_id_by_class(view, DB.FamilyInstance)
+    data = my_features.get_depends_elems_id_by_class(view, DB.FamilyInstance)
     new_data = copy_elem_on_view_to_new_view_with_up_move(data, view, new_view, up_value)
 
     return new_data
@@ -268,14 +270,6 @@ def get_elem_on_view_by_category(view, category):
 
     logging.debug('View #{}. Get {} elems on view by category: {}'.format(view.Id, len(elements), category))
     return elements
-
-
-def get_depends_elems_id_by_class(view, my_class):
-    my_filter = DB.ElementClassFilter(my_class)
-    elems_id = view.GetDependentElements(my_filter)
-
-    logging.debug('View #{}. Get {} id elems by class: {}'.format(view.Id, len(elems_id), my_class))
-    return elems_id
 
 
 def copy_elem_on_view_to_new_view_with_up_move(elems_id, view, new_view, up_value=0, option=None):

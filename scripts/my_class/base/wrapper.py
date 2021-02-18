@@ -97,24 +97,29 @@ class Transaction:
     def __init__(self, msg=None):
         self.msg = msg or 'Dynamo Transaction'
         self.transaction = DB.Transaction(doc, msg)
+        self.passes = False
 
     def __enter__(self):
-        self.transaction.Start()
+        try:
+            self.transaction.Start()
+        except Exception as exc:
+            self.passes = True
 
     def __exit__(self, exception, exception_msg, tb):
-        if exception:
-            self.transaction.RollBack()
-            logging.error('Error in Transaction Context: has rolled back.')
-            # traceback.print_tb(tb)
-            # raise exception # Let exception through
-        else:
-            try:
-                self.transaction.Commit()
-            except Exception as exc:
+        if not self.passes:
+            if exception:
                 self.transaction.RollBack()
-                logging.error('Error in Transaction Commit: has rolled back.')
-                logging.error(exc)
-                raise
+                logging.error('Error in Transaction Context: has rolled back.')
+                # traceback.print_tb(tb)
+                # raise exception # Let exception through
+            else:
+                try:
+                    self.transaction.Commit()
+                except Exception as exc:
+                    self.transaction.RollBack()
+                    logging.error('Error in Transaction Commit: has rolled back.')
+                    logging.error(exc)
+                    raise
 
     @staticmethod
     def ensure(name):

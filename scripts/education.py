@@ -15,6 +15,8 @@ sys.path.append(IN[5])
 from Autodesk.Revit.UI.Selection import ISelectionFilter, PickBoxStyle
 from rpw import revit, db, ui, doc, logger, DB, UI
 
+from my_class.my_revit_geom import GeometryInRevit
+
 
 class MySelectionFilter(ISelectionFilter):
     def __init__(self, cat, *args):
@@ -95,7 +97,285 @@ class Creator:
 
 @transaction
 def main():
-    return create_section()
+    # elem = UnwrapElement(IN[4])
+    return get_path()
+    # return get_up_elem(elem)
+
+    # new_dim = create_dim_by_dim_and_up(elem, vector=4050)
+    # return new_dim
+
+
+def calc_material_2(room):
+    """
+    Вычисление окружающих стен
+
+    https://github.com/jeremytammik/the_building_coder_samples/blob/master/BuildingCoder/BuildingCoder/CmdRoomWallAdjacency.cs
+    https://thebuildingcoder.typepad.com/blog/2009/01/room-and-wall-adjacency.html
+
+    :param room:
+    :type room:
+    :return:
+    :rtype:
+    """
+
+    boundaries = room.GetBoundarySegments(DB.SpatialElementBoundaryOptions())
+    materials = {}
+
+    if boundaries:
+        logging.debug('#{} room have {} boundaries'.format(room.Id, len(boundaries)))
+        for boundary in boundaries:
+            for segment in boundary:
+                elem = doc.GetElement(segment.ElementId)
+                if isinstance(elem, DB.Wall):
+                    curve = segment.GetCurve()
+                    length = curve.Length * 0.3048
+                    height = calc_wall_height(elem)
+
+    else:
+        ElemNotFound('#{} room. boundaries not found'.format(room.Id))
+
+    logging.debug('#{} Room. Have {} materials'.format(room.Id, len(materials)))
+    print materials
+    return materials
+
+
+def calc_wall_height(wall):
+    bottom_level = doc.GetElement(wall.LevelId)
+    bottom_elevation = bottom_level.Elevation
+    top_elevation = bottom_elevation
+
+    top_level_id = wall.get_Parameter(DB.BuiltInParameter.WALL_HEIGHT_TYPE)
+    if top_level_id:
+        top_level = doc.GetElement(top_level_id.AsElementId())
+        top_elevation = top_level.Elevation
+
+    height = (top_elevation - bottom_elevation) * 0.3048
+    logging.debug('#{} wall have height {} mm'.format(wall.Id, height))
+    return height
+
+
+def get_path():
+    window = UI.FileSaveDialog("Файлы AutoCAD 2013 DWG (*.dwg)|*.dwg")
+    window.InitialFileName = 'Enter a name or skip it'
+    window.Show()
+
+    path = window.GetSelectedModelPath()
+
+    if path:
+        string_path = DB.ModelPathUtils.ConvertModelPathToUserVisiblePath(path)
+
+        logging.debug('Get path from user: <{}>'.format(string_path))
+        return string_path
+
+    raise ElemNotFound('Cant get path from user')
+
+
+
+
+def create_dim_by_dim_and_up(view, dim, vector):
+
+    if dim.References.Size < 2:
+        logging.error('Dim #{} not valid. Because have less than 2')
+        return
+
+    ref_list = get_ref_list(dim, vector)
+
+    ref_arr = DB.ReferenceArray()
+    for ref in ref_list:
+        ref_arr.Append(ref)
+    logging.debug('Get ref arr: {}'.format(ref_arr.Size))
+
+    out_line = create_out_line_by_line_and_up(dim.Curve, vector)
+
+    new_dim = doc.Create.NewDimension(view, out_line, ref_arr)
+
+    logging.debug('New dim was created')
+    return new_dim
+
+
+def create_out_line_by_line_and_up(line, vector):
+    origin = line.Origin + vector
+    direction = line.Direction
+
+    new_line = DB.Line.CreateUnbound(origin, direction)
+
+    logging.debug('Get new outline with origin: {}'.format(origin))
+    return new_line
+
+
+def get_ref_list(dim, vector):
+    refs = dim.References
+    new_ref = []
+    for ref in refs:
+        elem = doc.GetElement(ref.ElementId)
+        logging.debug('Get element:      {} #{}'.format(elem.Name, elem.Id))
+
+        if type(elem) == DB.Grid:
+            new_ref.append(DB.Reference(elem))
+            logging.debug('Find Reference as grid')
+            continue
+
+        up_elem = get_up_elem_same_class(elem, vector)
+        logging.debug('Get up element: {} #{}'.format(up_elem.Name, up_elem.Id))
+
+        if type(elem) == DB.FamilyInstance:
+            logging.debug('Get FamilyInstance')
+            upper_reference = get_ref_for_fam_ins_or_none(ref, elem, up_elem)
+
+            if upper_reference:
+                new_ref.append(upper_reference)
+                continue
+
+        elem_geom = GeometryInRevit.get_geom_by_elem(elem)
+        up_geom = GeometryInRevit.get_geom_by_elem(up_elem)
+
+        for elem_face, up_face in zip(elem_geom.Faces, up_geom.Faces):
+            if ref.EqualTo(elem_face.Reference):
+                logging.debug('Find Reference')
+
+                new_ref.append(up_face.Reference)
+                break
+        else:
+            logging.error('Surface ref not found')
+            print ref.ConvertToStableRepresentation(doc)
+            # TODO FamilyInstance выдает ошибку здесь очень глубоко когда
+
+    logging.debug('Get references: {}'.format(len(new_ref)))
+    return new_ref
+
+
+def get_ref_for_fam_ins_or_none(ref, elem, up_elem):
+    type_ref = elem.GetReferenceType(ref)
+    logging.debug('Get type ref: {}'.format(type_ref))
+
+    if type_ref != DB.FamilyInstanceReferenceType.NotAReference:
+        elem_refs = elem.GetReferences(type_ref)
+        up_elem_refs = up_elem.GetReferences(type_ref)
+
+        upper_reference = get_same_ref_on_elem_or_none(ref, elem_refs, up_elem_refs)
+        return upper_reference
+
+    logging.error('Cant find reference by FamilyInstance as ref')
+    elem_geom = GeometryInRevit.get_geom_symbol_by_elem(elem)
+    up_elem_geom = GeometryInRevit.get_geom_symbol_by_elem(up_elem)
+
+    elem_refs = []
+    up_elem_refs = []
+
+    for first, second in zip(elem_geom, up_elem_geom):
+        if type(first) == DB.Line:
+            elem_refs.append(first.Reference)
+            up_elem_refs.append(second.Reference)
+
+    logging.debug('Create list of refs: {}'.format(len(elem_refs)))
+    upper_reference = get_same_ref_on_elem_or_none(ref, elem_refs, up_elem_refs)
+
+    if upper_reference:
+        logging.debug('Find reference by FamilyInstance as symbol Geometry')
+        return upper_reference
+
+    logging.error('Cant find reference by FamilyInstance as symbol Geometry')
+
+    elem_refs = []
+    up_elem_refs = []
+
+    elem_solid = GeometryInRevit._get_solid_by_geom(elem_geom)
+    up_elem_solid = GeometryInRevit._get_solid_by_geom(up_elem_geom)
+
+    for first, second in zip(elem_solid.Edges, up_elem_solid.Edges):
+        elem_refs.append(first.Reference)
+        up_elem_refs.append(second.Reference)
+
+    logging.debug('Create list of refs: {}'.format(len(elem_refs)))
+    upper_reference = get_same_ref_on_elem_or_none(ref, elem_refs, up_elem_refs)
+
+    if upper_reference:
+        logging.debug('Find reference by FamilyInstance as symbol edges')
+        return upper_reference
+
+
+def get_same_ref_on_elem_or_none(ref, old, new):
+    for old_ref, new_ref in zip(old, new):
+        if ref.EqualTo(old_ref):
+            logging.debug('Find Reference')
+            return new_ref
+
+    logging.error('Cant find same reference')
+
+
+def get_up_elem_same_class(elem, vector):
+    point = get_point_from_elem(elem)
+    my_filter = DB.BoundingBoxContainsPointFilter(point + vector, 10/304.8)
+
+    collector = DB.FilteredElementCollector(doc).OfClass(type(elem)).WherePasses(my_filter).ToElements()
+    for up_elem in collector:
+        if up_elem.Id != elem.Id:
+            return up_elem
+
+    raise ElemNotFound('Up elem not found')
+
+
+def get_point_from_elem(elem):
+    loc = elem.Location
+    if type(loc) == DB.LocationCurve:
+        point = loc.Curve.Origin
+        logging.debug('Get curve. Point is:{}'.format(point))
+        return point
+    elif type(loc) == DB.LocationPoint:
+        point = loc.Point
+        logging.debug('Get point. Point is:{}'.format(point))
+        return point
+
+    print 11, type(loc)
+    print 22, type(loc) == DB.LocationCurve
+    raise ElemNotFound('Point of elem not found: {}'.format(elem))
+
+
+def duplicate_view(view, up_value):
+    new_view_id = view.Duplicate(DB.ViewDuplicateOption.WithDetailing)
+    new_view = doc.GetElement(new_view_id)
+
+    vector = DB.XYZ(0, 0, up_value/304.8)
+
+    move_view(new_view, vector)
+    move_all_annotations(new_view, vector)
+    copy_all_dimensions(new_view, vector)
+
+
+def move_view(view, vector):
+    box = view.CropBox
+    box.Min = box.Min + DB.XYZ(0, vector.Z, 0)
+    box.Max = box.Max + DB.XYZ(0, vector.Z, 0)
+
+    view.CropBox = box
+    return
+
+
+def move_all_annotations(view, vector):
+    elems = get_depends_elems_by_class(view, DB.FamilyInstance)
+    DB.ElementTransformUtils.MoveElements(doc, elems, vector)
+    logging.debug('Annotation was moved: {}'.format(len(elems)))
+
+
+def copy_all_dimensions(view, vector):
+    dims = get_depends_elems_by_class(view, DB.Dimension)
+    new_dims = []
+
+    for dim_id in dims:
+        logging.debug('Get dim #{}'.format(dim_id))
+        dim = doc.GetElement(dim_id)
+        up_dim = create_dim_by_dim_and_up(view, dim, vector)
+        new_dims.append(up_dim)
+
+    doc.Delete(dims)
+    logging.debug('Dimensions was copied: {}'.format(len(new_dims)))
+
+
+def get_depends_elems_by_class(elem, my_class):
+    my_filter = DB.ElementClassFilter(my_class)
+    elems = elem.GetDependentElements(my_filter)
+    logging.debug('Get {} elems by class: {}'.format(len(elems), my_class))
+    return elems
 
 
 def create_section():

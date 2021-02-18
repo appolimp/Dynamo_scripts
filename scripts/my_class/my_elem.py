@@ -1,5 +1,6 @@
 # coding=utf-8
 from base.wrapper import doc, DB
+from base.exeption import ElemNotFound
 
 from abc import abstractmethod, ABCMeta
 from my_geom import MyPoints, MyFace
@@ -308,3 +309,58 @@ class MyElemFactory(object):
 
         logging.info('Get {}valid category: {}'.format('' if valid else 'not ', cat.Name))
         return valid
+
+
+class MyParameters:
+    def __init__(self, parameter):
+        self.parameter = parameter
+
+    def get_value(self):
+        storage_type = self.parameter.StorageType
+
+        if storage_type == DB.StorageType.Integer:
+            return self.parameter.AsInteger()
+        elif storage_type == DB.StorageType.Double:
+            return self.parameter.AsDouble()
+        elif storage_type == DB.StorageType.String:
+            return self.parameter.AsString()
+        elif storage_type == DB.StorageType.ElementId:
+            return self.parameter.AsElementId()
+        else:
+            raise ElemNotFound('Parameter #{}. Parameter of type not found: {}'.format(self.parameter.Id, storage_type))
+
+    def set_value(self, value):
+        storage_type = self.parameter.StorageType
+
+        if storage_type == DB.StorageType.Integer:
+            self.parameter.Set(int(value))
+        elif storage_type == DB.StorageType.Double:
+            self.parameter.Set(float(value))
+        elif storage_type == DB.StorageType.String:
+            self.parameter.Set(value)
+        elif storage_type == DB.StorageType.ElementId:
+            self.parameter.Set(value)
+        else:
+            raise ElemNotFound('Parameter #{}. Parameter of type not found: {}'.format(self.parameter.Id, storage_type))
+
+    def __nonzero__(self):
+        return bool(self.parameter)
+
+
+def copy_params_by_name(base_elem, cur_elem, param_names):
+    for param_name in param_names:
+        copy_param_by_name(base_elem, cur_elem, param_name)
+
+
+def copy_param_by_name(base_elem, cur_elem, param_name):
+    base_param = MyParameters(base_elem.LookupParameter(param_name))
+    cur_param = MyParameters(cur_elem.LookupParameter(param_name))
+
+    if base_param and cur_param:
+        value = base_param.get_value()
+        cur_param.set_value(value)
+        logging.debug('Element #{}. Copy param "{}" with value {} from #{}'.format(
+            cur_elem.Id, param_name, value, base_elem.Id))
+
+
+

@@ -1,5 +1,6 @@
 import logging
 
+from base.wrapper import DB, doc
 from math import pi
 from .my_geom import MyPoints
 
@@ -31,3 +32,30 @@ def calc_angle_to_ver_or_hor_side(main_vector, second_vector):
 
     logging.debug('Calc sign rotation angle: {:.2f}'.format(sign_angle * 180 / pi))
     return sign_angle
+
+
+def get_depends_elems_id_by_class(view, cur_class):
+    my_filter = DB.ElementClassFilter(cur_class)
+    elems_ids = view.GetDependentElements(my_filter)
+
+    logging.debug('View #{}. Get {} id elems by class: {}'.format(view.Id, len(elems_ids), cur_class))
+    return elems_ids
+
+
+def get_depends_elems_by_class(view, cur_class):
+    elems_ids = get_depends_elems_id_by_class(view, cur_class)
+    elems = get_elems_by_ids(elems_ids)
+
+    logging.debug('View #{}. Get {} elems by class: {}'.format(view.Id, len(elems), cur_class))
+    return elems
+
+
+def get_elems_by_ids(list_ids):
+    elems = []
+
+    for elem_id in list_ids:
+        elem = doc.GetElement(elem_id)
+        if elem is not None:
+            elems.append(elem)
+
+    return elems

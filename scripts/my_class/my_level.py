@@ -50,6 +50,7 @@ class Levels(object):
         else:
             logging.error('Point above upper level. Point height {:.3f} m'.format(point.Z * 0.3048))
 
+        logging.debug('Current level is {}'.format(prev.level.Name))
         return prev
 
     def get_next(self, current_level):
