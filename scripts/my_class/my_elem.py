@@ -18,7 +18,10 @@ class MyElementGeom:
     __metaclass__ = ABCMeta
 
     def __init__(self, element):
+
         self.element = element
+
+        self.up_face = None
         self._calc_some()
 
         self.origin = self._calc_origin()
@@ -29,6 +32,8 @@ class MyElementGeom:
 
         self.width = self._calc_width()
         self.length = self._calc_length()
+
+
 
     @abstractmethod
     def _calc_some(self):
