@@ -12,13 +12,11 @@ from System import Enum
 from System.Collections.Generic import List
 from Autodesk.Revit.Exceptions import InvalidOperationException
 
-
 uiapp = __uiapp__
 uidoc = uiapp.ActiveUIDocument
 doc = uidoc.Document
 app = doc.Application
 inputs = __inputs__
-
 
 SELECTION_MODE_KEY = inputs['selection'].Content
 SELECT_ALL = 'All'
@@ -57,7 +55,9 @@ def main():
         if room_number:
             room_solid = get_solids(room)[0]
             transformed_room_solid = DB.SolidUtils.CreateTransformed(room_solid, link_transform)  # TODO
-            collector = collect_by_bbox(room)
+            collector = collect_by_bbox(room)  # FIXME не понимаю зачем туда Room отдавать.
+            # Если возвращает пустой коллектор. можно попробовать отправлять BoundingBox от transformed_room_solid
+
             collector.WherePasses(DB.ElementIntersectsSolidFilter(transformed_room_solid))
             for el in collector:
                 set_parameter_by_name(el, PAR_NUMBER, room_number)
