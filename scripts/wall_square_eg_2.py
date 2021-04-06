@@ -52,25 +52,32 @@ def main():
             continue
 
         room_number = room.LookupParameter(PAR_ROOM_NUMBER).AsString()
+        logging.debug('Get room_number "{}"'.format(room_number))
         if room_number:
+            room_box = room.get_BoundingBox(None)
+            room_box.Transform = room_box.Transform.Multiply(link_transform)
+
             room_solid = get_solids(room)[0]
             transformed_room_solid = DB.SolidUtils.CreateTransformed(room_solid, link_transform)  # TODO
-            collector = collect_by_bbox(room)  # FIXME не понимаю зачем туда Room отдавать.
+            collector = collect_by_bbox(room_box, room_id=room.Id)
             # Если возвращает пустой коллектор. можно попробовать отправлять BoundingBox от transformed_room_solid
 
             collector.WherePasses(DB.ElementIntersectsSolidFilter(transformed_room_solid))
             for el in collector:
                 set_parameter_by_name(el, PAR_NUMBER, room_number)
                 logging.info('Элементу #{} присвоен номер помещения: "{}"'.format(el.Id, room_number))
+            logging.info('End Script')
         else:
             logging.warning('У помещения "{}" отсутствует номер для параметра "{}"'.format(room.Id, PAR_ROOM_NUMBER))
+
+    logging.debug('End')
 
 
 def get_link_by_name(link_name):  # TODO
     collector = DB.FilteredElementCollector(doc).OfClass(DB.RevitLinkInstance)
     for link in collector:
         if link_name in link.Name:
-            logging.info('Get link by name "{}"'.format(link.Name))
+            logging.debug('Get link by name "{}"'.format(link.Name))
             return link
 
     raise errors.ScriptError('Link with name "{}" not found'.format(link_name))
@@ -92,23 +99,28 @@ def get_parameter_id_by_name():
 
 
 def collect_elements(doc_=doc):
+    logging.debug('Start collect')
     cat_list = List[DB.BuiltInCategory]([DB.BuiltInCategory.OST_Rooms])
 
     cat_filter = DB.ElementMulticategoryFilter(cat_list)
 
     if SELECTION_MODE == SELECT_SELECTED:
+        logging.debug('SELECT_SELECTED')
         col = DB.FilteredElementCollector(doc_, get_selected_ids())
 
     elif SELECTION_MODE == SELECT_BY_VIEW:
+        logging.debug('SELECT_BY_VIEW')
         col = DB.FilteredElementCollector(doc_, doc_.ActiveView.Id)
 
     elif SELECTION_MODE == SELECT_BY_GROUP:
+        logging.debug('SELECT_BY_GROUP')
         members = get_selected_by_groups()
         col = DB.FilteredElementCollector(doc_, List[DB.ElementId](members))
 
     else:
+        logging.debug('All')
         col = DB.FilteredElementCollector(doc_)
-
+    logging.debug('return collector')
     col.WherePasses(cat_filter).WhereElementIsNotElementType()
     return col
 
@@ -147,13 +159,12 @@ def create_cat_filter():
     return cat_filter
 
 
-def collect_by_bbox(element, offset=0.3, collector=None):
-    bbox = element.get_BoundingBox(None)
+def collect_by_bbox(bbox, offset=0.3, collector=None, room_id=None):
     outline = DB.Outline(
         DB.XYZ(bbox.Min.X - offset, bbox.Min.Y - offset, bbox.Min.Z - offset),
         DB.XYZ(bbox.Max.X + offset, bbox.Max.Y + offset, bbox.Max.Z + offset))
     bbox_filter = DB.BoundingBoxIntersectsFilter(outline)
-    ids_to_exclude = List[DB.ElementId]([element.Id])
+    ids_to_exclude = List[DB.ElementId]([room_id])
 
     cat_filter = create_cat_filter()
 
